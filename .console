@@ -103,6 +103,26 @@
 				case '\r':
 					exit();
 					break;
+				case '\m':
+					echo PHP_EOL;
+					echo 'Entering non-interactive mode, press <ctrl>+d when done.' . PHP_EOL;
+					echo PHP_EOL;
+
+					$___code   = '';
+					$___silent = TRUE;
+
+					while ($___mline = fgets($___stdin)) {
+						$___code = $___code . $___mline;
+					}
+
+					echo PHP_EOL;
+					echo 'Output:' . PHP_EOL;
+					echo PHP_EOL;
+
+					___exec($___code, $___silent);
+
+					echo PHP_EOL;
+					break;
 				case '\e':
 					if (!($___exec = trim(substr($___code, 2)))) {
 						echo 'Please enter a Command: ';
@@ -147,18 +167,19 @@
 					break;
 				case '\?':
 					echo PHP_EOL;
-					echo '\c - Clear the Screen'         . PHP_EOL;
-					echo '\e - Execute a System Command' . PHP_EOL;
-					echo '\q - Quit the Program'         . PHP_EOL;
-					echo '\r - Reset the Program'        . PHP_EOL;
+					echo '\c - Clear the Screen'             . PHP_EOL;
+					echo '\m - Enter Non-Interactive mode'   . PHP_EOL;
+					echo '\e - Execute a System Command'     . PHP_EOL;
+					echo '\q - Quit the Program'             . PHP_EOL;
+					echo '\r - Reset the Program'            . PHP_EOL;
 
 					if ($___dbconf['disabled'] === FALSE) {
 						echo '\s - Run SQL Statement'    . PHP_EOL;
 						echo '\u - Select Database'      . PHP_EOL;
 					}
 
-					echo '\> - Change Directory'         . PHP_EOL;
-					echo '\? - Display this Message'     . PHP_EOL;
+					echo '\> - Change Directory'             . PHP_EOL;
+					echo '\? - Display this Message'         . PHP_EOL;
 					echo PHP_EOL;
 					break;
 			}
@@ -188,37 +209,13 @@
 
 			if ($___depth <= 0) {
 
-				$___depth = 0;
-				$___line  = 0;
+				___exec($___command, $___silent);
 
-				if ($___command && ___check($___command)) {
-
-					ob_start();
-					fCore::startErrorCapture();
-
-					try {
-						eval($___command);
-					} catch (Exception $___e) {
-						echo 'Exception:  ' . $___e->getMessage();
-					}
-
-					$___output  = ob_get_clean();
-
-					if(is_array($errors = fCore::stopErrorCapture())) {
-						foreach ($errors as $error) {
-							echo $error['type'] . ':  ' . $error['string'];
-						}
-					}
-
-					if($___output) {
-						echo $___output;
-						if (!$___silent) {
-							echo PHP_EOL;
-						}
-					}
-				}
+				$___depth   = 0;
+				$___line    = 0;
 				$___command = '';
 			}
+
 			$___line++;
 		}
 
@@ -228,6 +225,43 @@
 		}
 
 	} while(($___code = ___readline($___stdin)));
+
+
+	/**
+	 * Executes some PHP
+	 *
+	 * @param string The PHP to execute
+	 * @param boolean Whether or not to be quiet (output extra line)
+	 * @return void
+	 */
+	function ___exec($___command, $___silent) {
+		if ($___command && ___check($___command)) {
+
+				ob_start();
+				fCore::startErrorCapture();
+
+				try {
+						eval($___command);
+				} catch (Exception $___e) {
+						echo 'Exception:  ' . $___e->getMessage();
+				}
+
+				$___output  = ob_get_clean();
+
+				if(is_array($errors = fCore::stopErrorCapture())) {
+						foreach ($errors as $error) {
+								echo $error['type'] . ':  ' . $error['string'];
+						}
+				}
+
+				if($___output) {
+						echo $___output;
+						if (!$___silent) {
+								echo PHP_EOL;
+						}
+				}
+		}
+	}
 
 	/**
 	 * A simple readline wrapper that allows us to get the user input via
@@ -263,7 +297,7 @@
 					'-d short_open_tag=0',
 					'-d asp_tags=1',
 					'-d display_errors=1',
-					__FILE__
+					escapeshellarg(__FILE__)
 			)));
 		}
 	}
