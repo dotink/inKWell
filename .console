@@ -42,8 +42,6 @@
 	$___dbconf   = iw::getConfig('database');
 	$___database = ___use_db('default');
 
-	echo PHP_EOL;
-
 	@exec('php -v', $___garbage, $___php);
 
 	if ($___php !== 0) {
@@ -56,24 +54,42 @@
 	register_shutdown_function('___respawn');
 
 	$___stdin     = fopen('php://stdin', 'r');
+	$___stat      = fstat($___stdin);
 	$___depth     = 0;
-	$___line      = 1;
 	$___code      = '\?';
+	$___line      = 1;
 	$___command   = '';
+	$___silent    = FALSE;
 
-	if (isset($argv[1]) && $argv[1]) {
+	if (($___stat['mode'] & 0170000) !== 0020000) {
+		$___silent      = TRUE;
 		$___called_quit = TRUE;
-		try {
-			include $argv[1];
-			exit(0);
-		} catch (Exception $e) {
-			echo "Exception: " . $e->getMessage();
-			exit(1);
-		}
+		$___code        = '';
 	}
 
-	echo 'Welcome to the inKWell Console, you can begin typing PHP or try:';
-	echo PHP_EOL;
+
+	if (isset($argv[1]) && trim($argv[1])) {
+		$___called_quit = TRUE;
+
+		if (is_readable($argv[1])) {
+			try {
+				include $argv[1];
+				exit(0);
+			} catch (Exception $e) {
+				echo 'Exception: ' . $e->getMessage();
+				exit(1);
+			}
+		}
+
+		echo 'Error: Unable to execute ' . $argv[1];
+	}
+
+
+	if (!$___silent) {
+		echo PHP_EOL;
+		echo 'Welcome to the inKWell Console, you can begin typing PHP or try:';
+		echo PHP_EOL;
+	}
 
 	do {
 
@@ -196,15 +212,20 @@
 
 					if($___output) {
 						echo $___output;
-						echo PHP_EOL;
+						if (!$___silent) {
+							echo PHP_EOL;
+						}
 					}
 				}
 				$___command = '';
 			}
 			$___line++;
 		}
-		echo '[' . getcwd() . '][' . sprintf('%02s', $___line) . ']# ';
-		flush();
+
+		if (!$___silent) {
+			echo '[' . getcwd() . '][' . sprintf('%02s', $___line) . ']# ';
+			flush();
+		}
 
 	} while(($___code = ___readline($___stdin)));
 
