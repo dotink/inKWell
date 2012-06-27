@@ -169,8 +169,8 @@
 				case '\?':
 					echo PHP_EOL;
 					echo '\c - Clear the Screen'             . PHP_EOL;
-					echo '\m - Enter Non-Interactive mode'   . PHP_EOL;
 					echo '\e - Execute a System Command'     . PHP_EOL;
+					echo '\m - Enter Non-Interactive mode'   . PHP_EOL;
 					echo '\q - Quit the Program'             . PHP_EOL;
 					echo '\r - Reset the Program'            . PHP_EOL;
 
