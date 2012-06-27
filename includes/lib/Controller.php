@@ -380,8 +380,8 @@
 			$request_method  = strtoupper($_SERVER['REQUEST_METHOD']);
 			$allowed_methods = array_map('strtoupper', $methods);
 
-			if ($request_method == 'POST' && Request::check('request::method')) {
-				$request_method = Request::get('request::method', 'string', NULL);
+			if ($request_method == 'POST' && Request::check(Request::REQUEST_METHOD_PARAM)) {
+				$request_method = Request::get(Request::REQUEST_METHOD_PARAM, 'string', NULL);
 			}
 
 			if (!in_array($request_method, $allowed_methods)) {
