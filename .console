@@ -105,7 +105,13 @@
 					break;
 				case '\m':
 					echo PHP_EOL;
-					echo 'Entering non-interactive mode, press <ctrl>+d when done.' . PHP_EOL;
+
+					if (!fCore::checkOS('windows')) {
+						echo 'Entering non-interactive mode, press <ctrl>+D when done.' . PHP_EOL;
+					} else {
+						echo 'Entering non-interactive mode, press <ctrl>+Z when done.' . PHP_EOL;
+					}
+
 					echo PHP_EOL;
 
 					$___code        = '';
