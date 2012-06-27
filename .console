@@ -108,8 +108,9 @@
 					echo 'Entering non-interactive mode, press <ctrl>+d when done.' . PHP_EOL;
 					echo PHP_EOL;
 
-					$___code   = '';
-					$___silent = TRUE;
+					$___code        = '';
+					$___silent      = TRUE;
+					$___called_quit = TRUE;
 
 					while ($___mline = fgets($___stdin)) {
 						$___code = $___code . $___mline;
