@@ -25,6 +25,7 @@
 	define('MAINTENANCE_FILE', APPLICATION_ROOT . DIRECTORY_SEPARATOR . 'MAINTENANCE');
 
 	try {
+
 		//
 		// Boostrap!
 		//
@@ -35,7 +36,7 @@
 		include $include_directory . DIRECTORY_SEPARATOR . 'init.php';
 
 		//
-		// Check for and include maintenance file if it exists
+		// Check for and include maintenance file if it exists and exit right away
 		//
 		if (file_exists(MAINTENANCE_FILE)) {
 			include MAINTENANCE_FILE;
@@ -52,7 +53,7 @@
 		include $include_directory . DIRECTORY_SEPARATOR . 'routing.php';
 
 		//
-		// Run the router and get the returned view
+		// Try try try to get some sort of view data.
 		//
 		$data = NULL;
 		$data = ($data !== NULL) ? $data : Moor::run();
@@ -84,6 +85,7 @@
 		}
 
 	} catch (Exception $e) {
+
 		//
 		// Panic here, attempt to determine what state we're in, see if some
 		// errors handlers are callable or if we're totally fucked.  In the

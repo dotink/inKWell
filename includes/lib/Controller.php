@@ -60,6 +60,15 @@
 		static private $errors = array();
 
 		/**
+		 * The default error name.
+		 *
+		 * @static
+		 * @access private
+		 * @var string
+		 */
+		static private $defaultError = NULL;
+
+		/**
 		 * A list of default accept mime types
 		 *
 		 * @static
@@ -122,22 +131,16 @@
 			array_unshift($controller_configs, iw::getConfig('controller'));
 
 			foreach ($controller_configs as $controller_config) {
-
 				if (isset($controller_config['sections'])) {
-					if (!is_array($controller_config['sections'])) {
-						throw new fProgrammerException (
-							'Site sections must be an array of base urls ' .
-							'(keys) to titles (values)'
+					if (is_array($controller_config['sections'])) {
+						self::$siteSections = array_merge(
+							self::$siteSections,
+							$controller_config['sections']
 						);
 					}
-
-					self::$siteSections = array_merge(
-						self::$siteSections,
-						$controller_config['sections']
-					);
 				}
-
 			}
+
 			//
 			// Redirect to https:// if required for the section
 			//
@@ -151,8 +154,10 @@
 				$domain     = fURL::getDomain();
 				$request    = fURL::getWithQueryString();
 				$ssl_domain = str_replace('http://', 'https://', $domain);
+
 				self::redirect($ssl_domain . $request, NULL, 301);
 			}
+
 			//
 			// Configure our Controller Root
 			//
@@ -164,6 +169,7 @@
 			));
 
 			self::$controllerRoot = new fDirectory(self::$controllerRoot);
+
 			//
 			// Configure default accept types
 			//
@@ -176,15 +182,11 @@
 					'application/xml'
 				);
 			}
+
 			//
 			// Configure errors and error handlers
 			//
-			if (isset($config['errors'])) {
-				if (!is_array($config['errors'])) {
-					throw new fProgrammerException (
-						'Error configuration requires an array.'
-					);
-				}
+			if (isset($config['errors']) && is_array($config['errors'])) {
 				foreach ($config['errors'] as $error => $info) {
 					if (!is_array($info)) {
 						throw new fProgrammerException (
@@ -210,6 +212,10 @@
 					self::$errors[$error]['header']  = $header;
 					self::$errors[$error]['message'] = $message;
 				}
+
+				self::$defaultError = isset($config['default_error'])
+					? $config['default_error']
+					: NULL;
 			}
 		}
 
@@ -243,7 +249,8 @@
 		 * Triggers the default error and returns the view
 		 *
 		 * This is the last ditch attempt to retrieve an error view / response by the
-		 * Controller system.
+		 * Controller system.  Although this method is public it should not be used
+		 * directly.
 		 *
 		 * @static
 		 * @access public
@@ -253,10 +260,19 @@
 		static public function __error()
 		{
 			try {
+
+				//
+				// Trigger our default error so it attaches its view.
+				//
 				self::triggerError();
+
 			} catch (MoorContinueException $e) {
-				return View::retrieve();
+				//
+				// Purposefully catch the error.
+				//
 			}
+
+			return View::retrieve();
 		}
 
 		/**
@@ -271,7 +287,7 @@
 		 * @static
 		 * @access protected
 		 * @param array|string $accept_types An array of acceptable mime types
-		 * @return mixed The best type upon request
+		 * @return mixed The best acceptable type upon success
 		 */
 		static protected function acceptTypes($accept_types = array())
 		{
@@ -282,6 +298,7 @@
 			if (!count($accept_types)) {
 				$accept_types = self::$defaultAcceptTypes;
 			}
+
 			//
 			// The below mapping is used solely to normalize the request format to retrieve
 			// the above listed format accept types.  This makes 'htm' equivalent to 'html'
@@ -341,6 +358,7 @@
 							}
 						}
 					}
+
 					return (self::$contentType = $best_type);
 				}
 				self::triggerError('not_acceptable');
@@ -356,7 +374,7 @@
 		 * @static
 		 * @access protected
 		 * @param array $language An array of acceptable languages
-		 * @return mixed The method will trigger the 'not_accepted' error on failure, will return the best type upon success.
+		 * @return mixed The he best acceptable language upon success.
 		 */
 		static protected function acceptLanguages(array $languages)
 		{
@@ -411,9 +429,10 @@
 				$request_parts  = explode('/', $request_path);
 				$site_sections  = array_keys(self::$siteSections);
 
+				//
 				// If the request meets these conditions it will overwrite the
 				// base URL.
-
+				//
 				$has_base_url   = (in_array($request_parts[0], $site_sections));
 				$is_not_default = ($request_parts[0] != self::$baseURL);
 				$is_sub_request = (count($request_parts) > 1);
@@ -507,15 +526,13 @@
 		}
 
 		/**
-		 * Attempts to execute a target within the context of of Controller.  By default the
-		 * execution of the target is optional, meaning the target need not exist.  You can wrap
-		 * this function in Controller::demand() in order to require it.
+		 * Attempts to execute a target within the context of of Controller.
 		 *
 		 * @static
 		 * @access protected
 		 * @param string $target An inKWell target to execute
 		 * @param mixed Additional parameters to pass to the callback
-		 * @return mixed The return of the callback, if valid, an inKWell failure token otherwise.
+		 * @return mixed The return of the target action
 		 */
 		static protected function exec($target)
 		{
@@ -537,7 +554,7 @@
 		 * @param int $type 3xx HTTP Code to send (normalized for HTTP version), default 302/303
 		 * @return void
 		 */
-		static protected function redirect($target, $query = array(), $type = 302)
+		static protected function redirect($target, $query = array(), $type = 303)
 		{
 			$protocol = strtoupper($_SERVER['SERVER_PROTOCOL']);
 
@@ -588,6 +605,7 @@
 			if (!self::$typeHeadersSent && $send_content_type) {
 
 				if (!self::$contentType) {
+
 					//
 					// If the contentType is not set then acceptTypes was never called.
 					// we can call it now with the default accept types which will set
@@ -627,8 +645,13 @@
 		 * @throws MoorContinueException
 		 * @return void
 		 */
-		static protected function triggerError($error = 'not_found', $headers = TRUE, $message = NULL)
+		static protected function triggerError($error = NULL, $headers = TRUE, $message = NULL)
 		{
+
+			$error = ($error === NULL)
+				? self::$defaultError
+				: $error;
+
 			$error_info = array(
 				'handler' => NULL,
 				'header'  => $_SERVER['SERVER_PROTOCOL'] . ' 500 Internal Server Error',

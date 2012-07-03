@@ -2,18 +2,16 @@
 
 	return iw::createConfig('Library', array(
 
-		// Whether or not we should attempt to autoload classes which match
-		// this class from the root_directory
+		// Whether or not we should attempt to autoload classes which match this class from the
+		// root_directory
 
 		'auto_load' => TRUE,
 
-		// Whether or not we should attempt to auto scaffold records using this
-		// class.
+		// Whether or not we should attempt to auto scaffold records using this class.
 
 		'auto_scaffold' => FALSE,
 
-		// The directory relative to inkwell root in which user defined
-		// controllers are stored.
+		// The directory relative to application root in which user defined record sets are stored.
 
 		'root_directory' => 'user/controllers',
 
@@ -25,9 +23,8 @@
 			'application/xml'
 		),
 
-		// The sections array allows you to define any number of base URLs
-		// with different properties.  These properties will determine some
-		// default controller behavior.
+		// The sections array allows you to define any number of base URLs with different
+		// properties.  These properties will determine some default controller behavior.
 
 		'sections' => array(
 			'default'     => array(
@@ -35,21 +32,19 @@
 			),
 		),
 
-		// The standard controller class allows for errors to be custom
-		// configured based on keys.  Controller::triggerError('not_found')
-		// for example would use the information provided by the 'not_found'
-		// key below.
+		// The standard controller class allows for errors to be custom configured based on keys.
+		// Controller::triggerError('not_found') for example would use the information provided by
+		// the 'not_found' key below.
 		//
-		// Custom error configurations are expected to be arrays containing
-		// the following key => value pairs:
+		// Custom error configurations are expected to be arrays containing the following
+		// key => value pairs:
 		//
 		//      'handler'  : A custom callback to handle the error
 		//      'header'   : A header to be sent when triggered
 		//      'messsage' : A default error message
 		//
-		// Errors which are not configured will fallback to using
-		// Controller::triggerHardError() with default 500 internal server
-		// error headers and a generic message
+		// Errors which are not configured will fallback to using Controller::triggerError()
+		// with default 500 internal server error headers and a generic message.
 
 		'errors'             => array(
 
@@ -86,7 +81,12 @@
 			'unavailable'    => array(
 				'handler'    => NULL,
 				'header'     => $_SERVER['SERVER_PROTOCOL'] . ' 503 Service Unavailable',
-				'message'    => 'Service is temporarily unavailable due to heavily load or maintenance'
+				'message'    => 'The requested resource is temporarily unavailable'
 			)
-		)
+		),
+
+		// This allows us to configure our default error in the event that all processed controller
+		// activity has failed to return or attach a view.
+
+		'default_error' => 'not_found'
 	));

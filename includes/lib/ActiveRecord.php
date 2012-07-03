@@ -289,6 +289,7 @@
 					self::$info[$record_class][$column_config][$key] = $column;
 
 					switch ($column_config) {
+
 						//
 						// Special handling of image columns
 						//
@@ -305,6 +306,7 @@
 								)
 							);
 							break;
+
 						//
 						// Special handling of file columns
 						//
@@ -321,6 +323,7 @@
 								)
 							);
 							break;
+
 						//
 						// Special handling for order columns
 						//
@@ -336,6 +339,7 @@
 							}
 
 							break;
+
 						//
 						// Special handling for URL columns
 						//
@@ -345,6 +349,7 @@
 								$column
 							);
 							break;
+
 						//
 						// Special handling for e-mail columns
 						//
@@ -354,6 +359,7 @@
 								$column
 							);
 							break;
+
 						//
 						// Special handling for money columns
 						//
@@ -660,11 +666,9 @@
 		 */
 		static public function getRecordName($record_class)
 		{
-			if (isset(self::$nameTranslations[$record_class])) {
-				return self::$nameTranslations[$record_class];
-			} else {
-				return fGrammar::underscorize($record_class);
-			}
+			return isset(self::$nameTranslations[$record_class])
+				? self::$nameTranslations[$record_class]
+				: fGrammar::underscorize($record_class);
 		}
 
 		/**
@@ -677,11 +681,9 @@
 		 */
 		static public function getRecordSet($record_class)
 		{
-			if (isset(self::$setTranslations[$record_class])) {
-				return self::$setTranslations[$record_class];
-			} else {
-				return fGrammar::pluralize($record_class);;
-			}
+			return isset(self::$setTranslations[$record_class])
+				? self::$setTranslations[$record_class]
+				: fGrammar::pluralize($record_class);
 		}
 
 		/**
@@ -694,11 +696,9 @@
 		 */
 		static public function getRecordTable($record_class)
 		{
-			if (isset(self::$tableTranslations[$record_class])) {
-				return self::$tableTranslations[$record_class];
-			} else {
-				return fORM::tablize($record_class);
-			}
+			return isset(self::$tableTranslations[$record_class])
+				? self::$tableTranslations[$record_class]
+				: fORM::tablize($record_class);
 		}
 
 		/**

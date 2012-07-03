@@ -59,8 +59,7 @@
 		// in a database which was a date and wanted it to be represented
 		// in a particular format you could do something like this:
 		//
-		//      $user->prepareLastAccessedTimestamp('access_timestamp')
-		//
+		// $user->prepareLastAccessedTimestamp('access_timestamp')
 
 		'date_formats'          => array(
 

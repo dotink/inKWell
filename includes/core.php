@@ -632,18 +632,12 @@
 			//
 			// Initialize the Databases
 			//
-			$databases_enabled = (
+			if (
 				isset(self::$config['database']['disabled'])
 				&& !self::$config['database']['disabled']
-			);
-
-			if ($databases_enabled && isset(self::$config['database']['databases'])) {
-
-				if (!is_array(self::$config['database']['databases'])) {
-					throw new fProgrammerException (
-						'Databases must be configured as an array.'
-					);
-				}
+				&& isset(self::$config['database']['databases'])
+				&& is_array(self::$config['database']['databases'])
+			) {
 
 				$databases = self::$config['database']['databases'];
 
@@ -694,19 +688,18 @@
 
 					if (is_array($database_hosts) && count($database_hosts)) {
 
-						$target = self::makeTarget(__CLASS__, 'database_host['. $name . ']');
+						$target      = self::makeTarget(__CLASS__, 'database_host['. $name . ']');
+						$stored_host = fSession::get($target, NULL);
 
-						if (!($stored_host = fSession::get($target, NULL))) {
-
+						if (!$stored_host || !in_array($stored_host, $database_hosts)) {
 							$host_index    = array_rand($database_hosts);
 							$database_host = $database_hosts[$host_index];
 
 							fSession::set($target, $database_host);
-
 						} else {
-
 							$database_host = $stored_host;
 						}
+
 					}
 
 					if (strpos($database_host, 'sock:') !== 0) {
@@ -747,12 +740,14 @@
 					fORMDatabase::attach($db, $database_entry, $database_role);
 				}
 			}
+
 			//
 			// Load the Scaffolder if we have a configuration for it
 			//
 			if (isset(self::$config['scaffolder'])) {
 				self::loadClass('Scaffolder');
 			}
+
 			//
 			// All other configurations have the following special properties
 			//
@@ -821,6 +816,7 @@
 			}
 
 			$init_callback = array($class, self::INITIALIZATION_METHOD);
+
 			//
 			// If there's no __init we're done
 			//
@@ -830,6 +826,7 @@
 
 			$method  = end($init_callback);
 			$rmethod = new ReflectionMethod($class, $method);
+
 			//
 			// If __init is not custom, we're done
 			//
@@ -837,7 +834,9 @@
 				return TRUE;
 			}
 
+			//
 			// Determine class configuration and call __init with it
+			//
 			$element      = fGrammar::underscorize($class);
 			$class_config = (isset(self::$config[$element]))
 				? self::$config[$element]
@@ -884,6 +883,7 @@
 				}
 
 				if (class_exists($class, FALSE)) {
+
 					//
 					// Recursion may have loaded the class at this point, so we may not need to go
 					// any further.
@@ -891,15 +891,18 @@
 					return TRUE;
 
 				} elseif ($match) {
+
 					//
 					// But maybe we do...
 					//
 					$file = implode(DIRECTORY_SEPARATOR, array(
 						self::getRoot(),
+
 						//
 						// Trim leading or trailing directory separators from target
 						//
 						trim($target, '/\\' . DIRECTORY_SEPARATOR),
+
 						//
 						// Replace any backslashes in the class with directory separator
 						// to support Namespaces and trim the leading root namespace if present.
