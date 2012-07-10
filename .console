@@ -238,7 +238,7 @@
 
 					if(is_array($errors = fCore::stopErrorCapture())) {
 						foreach ($errors as $error) {
-							echo $error['type'] . ':  ' . $error['string'];
+							echo $error['type'] . ':  ' . $error['string'] . PHP_EOL;
 						}
 					}
 
