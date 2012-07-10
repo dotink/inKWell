@@ -64,9 +64,8 @@
 	if (($___stat['mode'] & 0170000) !== 0020000) {
 		$___silent      = TRUE;
 		$___called_quit = TRUE;
-		$___code        = '';
+		$___code        = NULL;
 	}
-
 
 	if (isset($argv[1]) && trim($argv[1])) {
 		$___called_quit = TRUE;
@@ -92,17 +91,22 @@
 	}
 
 	do {
+		if (($___code = trim($___code)) && $___code[0] == '\\') {
 
-		$___code = trim($___code);
+			//
+			// Handle escaped console commands
+			//
 
-		if ($___code && $___code[0] == '\\') {
+			$___command = $___code;
+			$___code    = NULL;
 
-			switch (substr($___code, 0, 2)) {
+			switch (substr($___command, 0, 2)) {
 				case '\q':
 					$___called_quit = TRUE;
+
 				case '\r':
 					exit();
-					break;
+
 				case '\m':
 					echo PHP_EOL;
 
@@ -114,7 +118,6 @@
 
 					echo PHP_EOL;
 
-					$___code        = '';
 					$___silent      = TRUE;
 					$___called_quit = TRUE;
 
@@ -125,28 +128,28 @@
 					echo PHP_EOL;
 					echo 'Output:' . PHP_EOL;
 					echo PHP_EOL;
-
-					___exec($___code, $___silent);
-
-					echo PHP_EOL;
 					break;
+
 				case '\e':
-					if (!($___exec = trim(substr($___code, 2)))) {
+					if (!($___exec = trim(substr($___command, 2)))) {
 						echo 'Please enter a Command: ';
 						$___exec = trim(fgets($___stdin));
 					}
 					passthru($___exec);
 					break;
+
 				case '\c':
 					___clear_screen();
 					break;
+
 				case '\s':
-					if (!($___sql = trim(substr($___code, 2)))) {
+					if (!($___sql = trim(substr($___command, 2)))) {
 						echo 'Please enter your SQL: ';
 						$___sql = trim(fgets($___stdin));
 					}
 					___run_query($___database, $___sql);
 					break;
+
 				case '\u':
 					if (!($___db_select = trim(substr($___code, 2)))) {
 						echo 'Enter the database name: ';
@@ -165,13 +168,15 @@
 					}
 					$___database = ___use_db($___db_name, $___db_role);
 					break;
+
 				case '\>':
-					if (!($___directory = trim(substr($___code, 2)))) {
+					if (!($___directory = trim(substr($___command, 2)))) {
 						echo 'Please enter a Directory: ';
 						$___directory = trim(fgets($___stdin));
 					}
 					chdir(trim($___directory, '\'"'));
 					break;
+
 				case '\?':
 					echo PHP_EOL;
 					echo '\c - Clear the Screen'             . PHP_EOL;
@@ -191,7 +196,11 @@
 					break;
 			}
 
-		} else {
+			$___command = NULL;
+		}
+
+
+		if ($___code) {
 
 			$___prev_depth = $___depth;
 
@@ -210,17 +219,40 @@
 				}
 			}
 
-			if ($___code) {
-				$___command  .= $___code . PHP_EOL;
-			}
+			$___command  .= $___code . PHP_EOL;
 
 			if ($___depth <= 0) {
 
-				___exec($___command, $___silent);
+				if ($___command && ___check($___command)) {
+
+					ob_start();
+					fCore::startErrorCapture();
+
+					try {
+						eval($___command);
+					} catch (Exception $___e) {
+						echo 'Exception:  ' . $___e->getMessage();
+					}
+
+					$___output  = ob_get_clean();
+
+					if(is_array($errors = fCore::stopErrorCapture())) {
+						foreach ($errors as $error) {
+							echo $error['type'] . ':  ' . $error['string'];
+						}
+					}
+
+					if($___output) {
+						echo $___output;
+						if (!$___silent) {
+							echo PHP_EOL;
+						}
+					}
+				}
 
 				$___depth   = 0;
 				$___line    = 0;
-				$___command = '';
+				$___command = NULL;
 			}
 
 			$___line++;
@@ -232,43 +264,6 @@
 		}
 
 	} while(($___code = ___readline($___stdin)));
-
-
-	/**
-	 * Executes some PHP
-	 *
-	 * @param string The PHP to execute
-	 * @param boolean Whether or not to be quiet (output extra line)
-	 * @return void
-	 */
-	function ___exec($___command, $___silent) {
-		if ($___command && ___check($___command)) {
-
-				ob_start();
-				fCore::startErrorCapture();
-
-				try {
-						eval($___command);
-				} catch (Exception $___e) {
-						echo 'Exception:  ' . $___e->getMessage();
-				}
-
-				$___output  = ob_get_clean();
-
-				if(is_array($errors = fCore::stopErrorCapture())) {
-						foreach ($errors as $error) {
-								echo $error['type'] . ':  ' . $error['string'];
-						}
-				}
-
-				if($___output) {
-						echo $___output;
-						if (!$___silent) {
-								echo PHP_EOL;
-						}
-				}
-		}
-	}
 
 	/**
 	 * A simple readline wrapper that allows us to get the user input via
