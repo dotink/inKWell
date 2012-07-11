@@ -13,7 +13,7 @@
 	 *
 	 * @package inKWell
 	 */
-	class View extends fTemplating implements inkwell, JSONSerializable
+	class View extends fTemplating implements inkwell, ArrayAccess, JSONSerializable
 	{
 		const DEFAULT_VIEW_ROOT     = 'views';
 		const DEFAULT_CACHE_DIR     = 'cache';
@@ -189,23 +189,16 @@
 		 * Creates a new view object.
 		 *
 		 * @access public
-		 * @param string $view_root The root directory for views, defaults to configured root_directory
+		 * @param string $view_root An overried for the configured root_directory for views
 		 * @return void
 		 */
-		public function __construct($view_root = NULL) {
-
-			if ($view_root === NULL) {
-				if (self::$viewRoot === NULL) {
-					throw new fProgrammerException (
-						'No view root has been specified, please call %s',
-						iw::makeTarget(__CLASS__, 'setViewRoot()')
-					);
-				} else {
-					parent::__construct(self::$viewRoot);
-				}
-			} else {
-				parent::__construct($view_root);
-			}
+		public function __construct($view_root = NULL)
+		{
+			parent::__construct(
+				$view_root === NULL
+					? self::$viewRoot
+					: $view_root
+			);
 
 			if (self::$minificationMode) {
 				$this->enableMinification(
@@ -251,9 +244,7 @@
 			try {
 				ob_start();
 				$this->place($element);
-				$content = ob_get_clean();
-
-				return $content;
+				return ob_get_clean();
 			} catch (fException $e) {
 				ob_end_clean();
 				throw $e;
@@ -319,6 +310,50 @@
 			}
 
 			return $this;
+		}
+
+		/**
+		 * Provides isset test functionality when view is used as an array
+		 *
+		 * @param mixed $offset The key or index to check for existence
+		 * @return boolean TRUE if the data element referred to by $offset exists, FALSE otherwise
+		 */
+		public function offsetExists($offset)
+		{
+			return isset($this->data[$offset]);
+		}
+
+		/**
+		 * Provides the ability to access data elements using the view object as an array
+		 *
+		 * @param mixed $offset The key or index to get
+		 * @return mixed The value of the data referred to by $offset
+		 */
+		public function offsetGet($offset)
+		{
+			return $this->pull($offset);
+		}
+
+		/**
+		 * Provides the ability to set data elements using the view object as an array
+		 *
+		 * @param mixed $offset The key or index to set
+		 * @return void
+		 */
+		public function offsetSet($offset, $value)
+		{
+			$this->pack($offset, $value);
+		}
+
+		/**
+		 * Provides the ability to unset data elements using the view object as an array
+		 *
+		 * @param mixed $offset The key or index to unset
+		 * @return void
+		 */
+		public function offsetUnset($offset)
+		{
+			unset($this->data[$offset]);
 		}
 
 		/**
