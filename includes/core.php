@@ -713,7 +713,7 @@
 
 					$database_target = explode('::', $name);
 
-					$database_entry   = !empty($database_target[0])
+					$database_entry  = !empty($database_target[0])
 						? $database_target[0]
 						: NULL;
 
@@ -753,6 +753,8 @@
 					$database_hosts = (isset($settings['hosts']))
 						? $settings['hosts']
 						: NULL;
+
+					$database_host = NULL;
 
 					if (is_array($database_hosts) && count($database_hosts)) {
 
