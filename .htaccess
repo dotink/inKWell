@@ -28,14 +28,20 @@
 	</FilesMatch>
 
 ################################################################################
+## inKWell Environment Options                                                ##
+################################################################################
+
+SetEnv IW_CONFIG default;
+
+################################################################################
 ## Enable Rewrite                                                             ##
 ################################################################################
 
 	<IfModule mod_rewrite.c>
 		RewriteEngine On
 		RewriteBase   /
-		
-		SetEnv REWRITE_ENABLED 1;
+
+		SetEnv IW_REWRITE_ENABLED 1;
 
 		RewriteCond	%{DOCUMENT_ROOT}/%{REQUEST_URI} !-f
 		RewriteRule	^.*$ %{DOCUMENT_ROOT}/index.php [NS,QSA]

@@ -14,7 +14,7 @@
 	// for routers that handle it.  And normalize PATH_TRANSLATED.  If we do support
 	// it we shouldn't be using either.
 	//
-	if (!isset($_SERVER['REWRITE_ENABLED']) || !$_SERVER['REWRITE_ENABLED']) {
+	if (!isset($_SERVER['IW_REWRITE_ENABLED']) || !$_SERVER['IW_REWRITE_ENABLED']) {
 		if ($_SERVER['REQUEST_URI'] == '/') {
 			$_SERVER['PATH_INFO']   = '/';
 			$_SERVER['REQUEST_URI'] = $_SERVER['PHP_SELF'];

@@ -10,12 +10,10 @@
 	 * the development.conf file or, if not found, the config/development directory.
 	 */
 
-	define('CONFIGURATION', 'default');
-
 	include 'functions.php';
 	include 'core.php';
 
-	iw::init(CONFIGURATION);
+	iw::init();
 
 	/**
 	 * CUSTOM INITIALIZATION LOGIC CAN FOLLOW

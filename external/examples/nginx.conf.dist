@@ -9,7 +9,7 @@ server {
 	gzip_disable "MSIE [1-6]\.(?!.*SV1)";
 
 	# Whether or not rewriting is enabled
-	
+
 	set $iw_rewrite_enabled 1;
 
 	# Deny access to .hidden files, if Apache's document root
@@ -26,6 +26,9 @@ server {
 	# BEGIN INKWELL CONFIGURATION
 
 	location @inkwell {
+
+		fastcgi_param IW_CONFIG default;
+
 		if ($iw_rewrite_enabled) {
 			rewrite ^/(.*)$ /index.php?$query_string;
 		}
@@ -38,10 +41,10 @@ server {
 
 		include fastcgi_params;
 
-		fastcgi_split_path_info        ^(.+\.php)(/.*)$;
-		fastcgi_param PATH_INFO        $fastcgi_path_info;
-		fastcgi_param PATH_TRANSLATED  $document_root$fastcgi_script_name;
-		fastcgi_param SCRIPT_FILENAME  $document_root$fastcgi_script_name;
-		fastcgi_param REWRITE_ENABLED  $iw_rewrite_enabled;
+		fastcgi_split_path_info           ^(.+\.php)(/.*)$;
+		fastcgi_param PATH_INFO           $fastcgi_path_info;
+		fastcgi_param PATH_TRANSLATED     $document_root$fastcgi_script_name;
+		fastcgi_param SCRIPT_FILENAME     $document_root$fastcgi_script_name;
+		fastcgi_param IW_REWRITE_ENABLED  $iw_rewrite_enabled;
 	}
 }

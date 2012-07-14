@@ -12,7 +12,7 @@
 	 */
 	class iw
 	{
-		const DEFAULT_CONFIG_PATH      = 'config';
+		const DEFAULT_CONFIG_ROOT      = 'config';
 		const DEFAULT_CONFIG           = 'default';
 
 		const INITIALIZATION_METHOD    = '__init';
@@ -134,39 +134,51 @@
 		 * @access public
 		 * @param string|fDirectory $directory The directory containing the configuration elements
 		 * @param boolean $quiet Whether or not to output information, defaulted to FALSE
+		 * @param integer $depth A recursive depth counter (used internally)
 		 * @param array The configuration array which was built
 		 */
-		static public function buildConfig($directory = NULL, $quiet = FALSE)
+		static public function buildConfig($directory = NULL, $quiet = FALSE, $depth = 0)
 		{
 			$config = array();
 
-			if ($directory === NULL) {
-				$directory = self::getRoot('config');
-			} elseif (is_string($directory)) {
-				if (!preg_match(self::REGEX_ABSOLUTE_PATH, $directory)) {
-					$directory = realpath(implode(DIRECTORY_SEPARATOR, array(
-						self::getRoot('config'),
-						$directory
-					)));
-				}
-			} elseif (class_exists('fDirectory', FALSE) && $directory instanceof fDirectory) {
-				$directory = $directory->getPath();
+			if (!$directory) {
+				$directory = isset($_SERVER['IW_CONFIG'])
+					? $_SERVER['IW_CONFIG']
+					: self::DEFAULT_CONFIG;
 			}
 
-			if (!is_dir($directory) || !is_readable($directory)) {
+			if (class_exists('fDirectory', FALSE) && $directory instanceof fDirectory) {
+				$directory = $directory->getPath();
+			} elseif (!preg_match(self::REGEX_ABSOLUTE_PATH, $directory)) {
+				$directory = realpath(implode(DIRECTORY_SEPARATOR, array(
+					self::getRoot('config'),
+					$directory
+				)));
+
+				if (!is_dir($directory)) {
+					throw new Exception(
+						'Cannot build configuration, directory "%s" not found.',
+						$directory
+					);
+				}
+			}
+
+ 			if (!is_readable($directory)) {
 				throw new Exception(
-					'Cannot build configuration, directory "%s" is unreadable.',
+					'Cannot build configuration, directory "%s" is not readable.',
 					$directory
 				);
-			}
+ 			}
 
 			$directory .= DIRECTORY_SEPARATOR;
+
 			//
 			// Loads each PHP file into a configuration element named after
 			// the file.  We check to see if the CONFIG_TYPE_ELEMENT is set
 			// to ensure configurations are added to their respective
 			// type in the $config['__types'] array.
 			//
+
 			foreach (glob($directory . '*.php') as $config_file) {
 
 				$config_element = pathinfo($config_file, PATHINFO_FILENAME);
@@ -187,16 +199,54 @@
 				$config['__types'][$type][] = $config_element;
 				$config[$config_element]    = $current_config;
 			}
+
 			//
 			// Ensures we recusively scan all directories and merge all
 			// configurations.  Directory names do not play a role in the
 			// configuration key name.
 			//
+
 			foreach (glob($directory . '*', GLOB_ONLYDIR) as $sub_directory) {
 				$config = array_merge_recursive(
 					$config,
-					self::buildConfig($sub_directory, $quiet)
+					self::buildConfig($sub_directory, $quiet, $depth + 1)
 				);
+			}
+
+			//
+			// At the top most level will will build whatever the default configuration is
+			// and attempt to merge our configured directory on top of that.  When we build
+			// the default we pass in an arbitrary depth of 1 so that it does not recurse.
+			//
+			// TODO: This does not check if they are the same config, so it's inefficient during
+			// development.  Once cached it shouldn't matter as buildConfig() should not be called
+			// by init()
+			//
+
+			if (!$depth) {
+				$merged_config = self::buildConfig(NULL, $quiet, 1);
+				$bref_stack    = array(&$merged_config);
+				$head_stack    = array($config);
+
+				do {
+					end($bref_stack);
+
+					$bref = &$bref_stack[key($bref_stack)];
+					$head = array_pop($head_stack);
+
+					unset($bref_stack[key($bref_stack)]);
+
+					foreach (array_keys($head) as $key) {
+						if (isset($key, $bref) && is_array($bref[$key]) && is_array($head[$key])) {
+							$bref_stack[] = &$bref[$key];
+							$head_stack[] = $head[$key];
+						} else {
+							$bref[$key] = $head[$key];
+						}
+					}
+				} while(count($head_stack));
+
+				$config = $merged_config;
 			}
 
 			return $config;
@@ -455,40 +505,43 @@
 		}
 
 		/**
-		 * Initializes the inKWell system with a chosen configuration.  If not configuraiton is
-		 * specified it will result in the default configuration.
+		 * Initializes the inKWell system with a chosen configuration source.  The configuration
+		 * source is a file path to either a directory or a serialized cache file.  If the provided
+		 * source is not an absolute path, it is assumed to represent the directory or cache file
+		 * in the default configuration root (both will be tried).
 		 *
 		 * @static
 		 * @access public
-		 * @param string $configuration The name of the configuration to use
+		 * @param string $config The path/name of the configuration to use
 		 * @return array The loaded configuration
 		 */
-		static public function init($configuration = NULL)
+		static public function init($config = NULL)
 		{
-			if (!$configuration) {
-				$configuration = self::DEFAULT_CONFIG;
-			}
-
 			self::$roots['config'] = realpath(implode(DIRECTORY_SEPARATOR, array(
 				self::getRoot(),
-				self::DEFAULT_CONFIG_PATH
+				self::DEFAULT_CONFIG_ROOT
 			)));
 
-			$config_source = implode(DIRECTORY_SEPARATOR, array(
-				self::getRoot('config'),
-				'.' . $configuration
-			));
+			$config_cache = preg_match(self::REGEX_ABSOLUTE_PATH, $config)
+				? $config
+				: implode(DIRECTORY_SEPARATOR, array(
+					self::getRoot('config'),
+					'.' . $config
+				));
 
-			if (is_readable($config_source)) {
-				self::$config = @unserialize(file_get_contents($config_source));
+
+			if (is_readable($config_cache) && is_file($config_cache)) {
+				self::$config = @unserialize(file_get_contents($config_cache));
 			}
 
 			if (!self::$config) {
-				self::$config = self::buildConfig($configuration, TRUE);
+				self::$config = self::buildConfig($config, TRUE);
 			}
+
 			//
 			// Set up our write directory
 			//
+
 			self::$writeDirectory = implode(DIRECTORY_SEPARATOR, array(
 				self::getRoot(),
 				trim(
@@ -498,9 +551,11 @@
 					'/\\' . DIRECTORY_SEPARATOR
 				)
 			));
+
 			//
 			// Configure our autoloaders
 			//
+
 			if (isset(self::$config['autoloaders'])) {
 				if(is_array(self::$config['autoloaders'])) {
 					self::$autoLoaders = self::$config['autoloaders'];
@@ -508,9 +563,11 @@
 			}
 
 			spl_autoload_register(self::makeTarget(__CLASS__, 'loadClass'));
+
 			//
 			// Set up execution mode
 			//
+
 			$valid_execution_modes = array('development', 'production');
 			self::$executionMode   = self::DEFAULT_EXECUTION_MODE;
 
@@ -519,9 +576,11 @@
 					self::$executionMode = self::$config['inkwell']['execution_mode'];
 				}
 			}
+
 			//
 			// Initialize Error Reporting
 			//
+
 			if (isset(self::$config['inkwell']['error_level'])) {
 				error_reporting(self::$config['inkwell']['error_level']);
 			}
@@ -548,6 +607,7 @@
 			//
 			// Include any interfaces
 			//
+
 			if (isset(self::$config['inkwell']['interfaces'])) {
 
 				$interface_directories = self::$config['inkwell']['interfaces'];
@@ -570,10 +630,12 @@
 					}
 				}
 			}
+
 			//
 			// Initialize Date and Time Information, this has to be before any
 			// time related functions.
 			//
+
 			fTimestamp::setDefaultTimezone(
 				isset(self::$config['inkwell']['default_timezone'])
 					? self::$config['inkwell']['default_timezone']
@@ -587,9 +649,11 @@
 					}
 				}
 			}
+
 			//
 			// Redirect if we're not the active domain.
 			//
+
 			$url_parts          = parse_url(fURL::getDomain());
 			self::$activeDomain = isset(self::$config['inkwell']['active_domain'])
 				? self::$config['inkwell']['active_domain']
@@ -607,9 +671,11 @@
 					fURL::getWithQueryString()
 				);
 			}
+
 			//
 			// Initialize the Session
 			//
+
 			if (isset(self::$config['inkwell']['session_path'])) {
 				fSession::setPath(self::getWriteDirectory(
 					self::$config['inkwell']['session_path']
@@ -629,9 +695,11 @@
 			}
 
 			fSession::open();
+
 			//
 			// Initialize the Databases
 			//
+
 			if (
 				isset(self::$config['database']['disabled'])
 				&& !self::$config['database']['disabled']
@@ -744,6 +812,7 @@
 			//
 			// Load the Scaffolder if we have a configuration for it
 			//
+
 			if (isset(self::$config['scaffolder'])) {
 				self::loadClass('Scaffolder');
 			}
@@ -756,6 +825,7 @@
 			// 'root_directory' => Used by the scaffolder and more
 			//
 			//
+
 			$preload_classes = array();
 
 			foreach (self::$config as $element => $config) {
