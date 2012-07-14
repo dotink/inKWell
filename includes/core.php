@@ -800,11 +800,11 @@
 					}
 
 					if ($database_role == 'read'  || $database_role == 'both') {
-						self::$databases[$database_name]['read'] = $db;
+						self::$databases[$database_entry]['read'] = $db;
 					}
 
 					if ($database_role == 'write' || $database_role == 'both') {
-						self::$databases[$database_name]['write'] = $db;
+						self::$databases[$database_entry]['write'] = $db;
 					}
 
 					fORMDatabase::attach($db, $database_entry, $database_role);

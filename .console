@@ -151,7 +151,7 @@
 					break;
 
 				case '\u':
-					if (!($___db_select = trim(substr($___code, 2)))) {
+					if (!($___db_select = trim(substr($___command, 2)))) {
 						echo 'Enter the database name: ';
 						$___db_name = trim(fgets($___stdin));
 						echo 'Enter a role (read, write, [either]): ';
@@ -161,8 +161,10 @@
 						}
 					} else {
 						$___db_select = explode(' ', $___db_select);
-						$___db_name   = $___db_select[0];
-						$___db_role   = (isset($___db_select[1]))
+						$___db_name   = $___db_select[0]
+							? $___db_select[0]
+							: 'default';
+						$___db_role   = $___db_select[1]
 							? $___db_select[1]
 							: 'either';
 					}
