@@ -1037,8 +1037,6 @@
 					? '?' . @http_build_query($query_data, '', $ampersand, PHP_QUERY_RFC3986)
 					: NULL;
 
-					var_dump($query_data); exit();
-
 				if (strpos($target, '/') === 0 && Moor::getActiveProxyURI()) {
 					return Moor::getActiveProxyURI() . $target . $query_data;
 				}
