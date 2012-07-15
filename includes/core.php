@@ -1033,7 +1033,7 @@
 			if (!is_callable($target) && strpos($target, '*') !== 0) {
 
 				$ampersand  = $encode ? '&amp;' : '&';
-				$query_data = (count($query))
+				$query_data = (count($query_data))
 					? '?' . @http_build_query($query, '', $ampersand, PHP_QUERY_RFC3986)
 					: NULL;
 
