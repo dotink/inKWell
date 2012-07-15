@@ -1024,21 +1024,24 @@
 		 * @access public
 		 * @param string $target an inKWell target to redirect to
 		 * @param array $query an associative array containing parameters => values
+		 * @param string $hash Optional hash tag
+		 * @param boolean $encode Whether or not to encode for HTML, default TRUE
 		 * @return string The appropriate URL for the provided parameters
 		 */
-		static public function makeLink($target, $query = array())
+		static public function makeLink($target, $query = array(), $hash = NULL, $encode = TRUE)
 		{
 			if (!is_callable($target) && strpos($target, '*') !== 0) {
 
+				$enc   = PHP_QUERY_RFC3986;
 				$query = (count($query))
-					? '?' . @http_build_query($query, '', '&', PHP_QUERY_RFC3986)
+					? '?' . @http_build_query($query, '', $encode ? '&amp;' : '&', $enc)
 					: NULL;
 
 				if (strpos($target, '/') === 0 && Moor::getActiveProxyURI()) {
 					return Moor::getActiveProxyURI() . $target . $query;
 				}
 
-				return $target . $query;
+				return $target . $query . ($hash ? '#' . $hash : NULL);
 			}
 
 			$params = array_keys($query);
@@ -1047,10 +1050,9 @@
 				? $target
 				: implode(' ', $params);
 
-			return call_user_func_array(
-				'Moor::linkTo',
-				array_merge(array($target), $query)
-			);
+			$params = array_merge(array($target), $query);
+
+			return call_user_func_array('Moor::linkTo', $params) . ($hash ? '#' . $hash : NULL);
 		}
 
 		/**
