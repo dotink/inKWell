@@ -1032,7 +1032,11 @@
 		{
 			if (!is_callable($target) && strpos($target, '*') !== 0) {
 
-				$enc   = constant('PHP_QUERY_RFC3986') ? PHP_QUERY_RFC3986 : 2;
+				if (!constant('PHP_QUERY_RFC3986')) {
+					define('PHP_QUERY_RFC3986', 2);
+				}
+
+				$enc   = PHP_QUERY_RFC3986;
 				$query = (count($query))
 					? '?' . @http_build_query($query, '', $encode ? '&amp;' : '&', $enc)
 					: NULL;
