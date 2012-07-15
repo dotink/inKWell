@@ -554,7 +554,7 @@
 		 * @param int $type 3xx HTTP Code to send (normalized for HTTP version), default 302/303
 		 * @return void
 		 */
-		static protected function redirect($target, $query = array(), $type = 303)
+		static protected function redirect($target = NULL, $query = array(), $type = 303)
 		{
 			$protocol = strtoupper($_SERVER['SERVER_PROTOCOL']);
 
@@ -584,6 +584,10 @@
 						header('HTTP/1.1 307 Temporary Redirect');
 						break;
 				}
+			}
+
+			if ($target === NULL) {
+				fURL::redirect();
 			}
 
 			fURL::redirect(iw::makeLink($target, $query));
