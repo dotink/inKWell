@@ -590,7 +590,7 @@
 				fURL::redirect();
 			}
 
-			fURL::redirect(iw::makeLink($target, $query));
+			fURL::redirect(iw::makeLink($target, $query, NULL, FALSE));
 		}
 
 		/**
