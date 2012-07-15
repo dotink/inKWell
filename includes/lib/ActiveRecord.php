@@ -1056,7 +1056,7 @@
 			$record_class = get_class($this);
 
 			if ($id_column = self::getInfo($record_class, 'id_column')) {
-				$method = fGrammar::camelize($id_column, TRUE);
+				$method = 'get' . fGrammar::camelize($id_column, TRUE);
 				return $this->$method();
 			}
 
