@@ -1205,4 +1205,24 @@
 
 			return $this->slug;
 		}
+
+		/**
+		 * Populates a record from (non) namespaced parameters
+		 *
+		 * @access public
+		 * @param string $namespace An optional namespace to look for values in
+		 * @return void
+		 */
+		public function populate($namespace = NULL)
+		{
+			if ($namespace) {
+				Request::filter($namespace . '::');
+			}
+
+			parent::populate();
+
+			if ($namespace) {
+				Request::unfilter();
+			}
+		}
 	}
