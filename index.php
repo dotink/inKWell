@@ -30,7 +30,7 @@
 	// Define our application root as the directory containing the includes folder
 	//
 
-	define('APPLICATION_ROOT', dirname($include_directory));
+	define('APPLICATION_ROOT', realpath(dirname($include_directory)));
 	define('MAINTENANCE_FILE', APPLICATION_ROOT . DIRECTORY_SEPARATOR . 'MAINTENANCE');
 
 	try {

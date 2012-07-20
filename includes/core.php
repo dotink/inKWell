@@ -1082,7 +1082,7 @@
 		static public function writeConfig(array $config, $file = self::DEFAULT_CONFIG)
 		{
 			$file = !preg_match(self::REGEX_ABSOLUTE_PATH, $file)
-				? realpath(self::getRoot('config') . iw::DS) . '.' . $file
+				? self::getRoot('config') . iw::DS . '.' . $file
 				: $file;
 
 			if (self::checkSAPI('cli')) {
