@@ -130,7 +130,7 @@
 		static public function exists($view_file)
 		{
 			if (!preg_match(iw::REGEX_ABSOLUTE_PATH, $view_file)) {
-				$view_file = self::$viewRoot . $view_file;
+				$view_file = self::$viewRoot . iw::DS . $view_file;
 			}
 
 			return is_readable($view_file);
