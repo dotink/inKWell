@@ -12,6 +12,9 @@
 	 */
 	class iw
 	{
+		const LB                       = PHP_EOL;
+		const DS                       = DIRECTORY_SEPARATOR;
+
 		const DEFAULT_CONFIG_ROOT      = 'config';
 		const DEFAULT_CONFIG           = 'default';
 
@@ -22,7 +25,7 @@
 		const DEFAULT_WRITE_DIRECTORY  = 'assets';
 		const DEFAULT_EXECUTION_MODE   = 'development';
 
-		const REGEX_ABSOLUTE_PATH      = '#^(/|\\\\|[a-z]:(\\\\|/)|\\\\|//|\./|\.\\\\)#i';
+		const REGEX_ABSOLUTE_PATH      = '#^(/|\\\\|[a-z]:(\\\\|/)|\\\\|//)#i';
 		const REGEX_VARIABLE           = '/[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*/';
 
 		/**
@@ -89,15 +92,6 @@
 		static private $loadedInterfaces = array();
 
 		/**
-		 * The stored failure token
-		 *
-		 * @static
-		 * @access private
-		 * @var string
-		 */
-		static private $failureToken = NULL;
-
-		/**
 		 * List of class translations.
 		 *
 		 * @static
@@ -133,44 +127,32 @@
 		 * @static
 		 * @access public
 		 * @param string|fDirectory $directory The directory containing the configuration elements
-		 * @param boolean $quiet Whether or not to output information, defaulted to FALSE
 		 * @param integer $depth A recursive depth counter (used internally)
 		 * @param array The configuration array which was built
 		 */
-		static public function buildConfig($directory = NULL, $quiet = FALSE, $depth = 0)
+		static public function buildConfig($directory = NULL, $depth = 0)
 		{
 			$config = array();
 
 			if (!$directory) {
-				$directory = isset($_SERVER['IW_CONFIG'])
+				$directory  = iw::getRoot('config', self::DEFAULT_CONFIG_ROOT) . iw::DS;
+				$directory .= isset($_SERVER['IW_CONFIG'])
 					? $_SERVER['IW_CONFIG']
 					: self::DEFAULT_CONFIG;
 			}
 
-			if (class_exists('fDirectory', FALSE) && $directory instanceof fDirectory) {
-				$directory = $directory->getPath();
-			} elseif (!preg_match(self::REGEX_ABSOLUTE_PATH, $directory)) {
-				$directory = realpath(implode(DIRECTORY_SEPARATOR, array(
-					self::getRoot('config'),
-					$directory
-				)));
-
-				if (!is_dir($directory)) {
-					throw new Exception(
-						'Cannot build configuration, directory "%s" not found.',
-						$directory
-					);
-				}
+			if (!preg_match(self::REGEX_ABSOLUTE_PATH, $directory)) {
+				$directory = self::getRoot(NULL, $directory);
 			}
 
  			if (!is_readable($directory)) {
-				throw new Exception(
+				throw new Exception(sprintf(
 					'Cannot build configuration, directory "%s" is not readable.',
 					$directory
-				);
+				));
  			}
 
-			$directory .= DIRECTORY_SEPARATOR;
+			$directory .= iw::DS;
 
 			//
 			// Loads each PHP file into a configuration element named after
@@ -183,8 +165,8 @@
 
 				$config_element = pathinfo($config_file, PATHINFO_FILENAME);
 
-				if (!$quiet) {
-					echo "Loading config data for $config_element...\n";
+				if (self::checkSAPI('cli')) {
+					echo sprintf('Building config data for %s' . iw::LB, $config_element);
 				}
 
 				$current_config = include($config_file);
@@ -209,7 +191,7 @@
 			foreach (glob($directory . '*', GLOB_ONLYDIR) as $sub_directory) {
 				$config = array_merge_recursive(
 					$config,
-					self::buildConfig($sub_directory, $quiet, $depth + 1)
+					self::buildConfig($sub_directory, $depth + 1)
 				);
 			}
 
@@ -223,8 +205,9 @@
 			// by init()
 			//
 
-			if (!$depth) {
-				$merged_config = self::buildConfig(NULL, $quiet, 1);
+			if ($depth == 0) {
+
+				$merged_config = self::buildConfig(NULL, 1);
 				$bref_stack    = array(&$merged_config);
 				$head_stack    = array($config);
 
@@ -237,7 +220,7 @@
 					unset($bref_stack[key($bref_stack)]);
 
 					foreach (array_keys($head) as $key) {
-						if (isset($key, $bref) && is_array($bref[$key]) && is_array($head[$key])) {
+						if (isset($bref[$key]) && is_array($bref[$key]) && is_array($head[$key])) {
 							$bref_stack[] = &$bref[$key];
 							$head_stack[] = $head[$key];
 						} else {
@@ -261,9 +244,20 @@
 		 * @param string $type The configuration type
 		 * @return array The configuration array
 		 */
-		static public function createConfig($type, $config)
+		static public function createConfig($type, $config = array())
 		{
-			$config[self::CONFIG_TYPE_ELEMENT] = strtolower($type);
+			if (func_num_args() > 1) {
+				$type   = func_get_arg(0);
+				$config = func_get_arg(1);
+			} else {
+				$type   = NULL;
+				$config = func_get_arg(0);
+			}
+
+			if (isset($type)) {
+				$config[self::CONFIG_TYPE_ELEMENT] = strtolower($type);
+			}
+
 			return $config;
 		}
 
@@ -293,6 +287,19 @@
 		static public function checkSAPI($sapi)
 		{
 			return (strtolower(php_sapi_name()) == strtolower($sapi));
+		}
+
+		/**
+		 * Get a config element name from a class, taking translations into account
+		 *
+		 * @static
+		 * @access public
+		 * @param string $class The class name
+		 * @return string The element name for the class
+		 */
+		static public function elementize($class)
+		{
+			return array_search($class, self::$classTranslations);
 		}
 
 		/**
@@ -449,19 +456,31 @@
 		 * @static
 		 * @access public
 		 * @param string $element The class or configuration element
+		 * @param string $default A default root, relative to the application root
 		 * @return string A reference to the root directory for "live roots"
 		 */
-		static public function getRoot($element = NULL)
+		static public function getRoot($element = NULL, $default = NULL)
 		{
-			if ($element === NULL) {
-				return APPLICATION_ROOT;
+			$element   = strtolower($element);
+			$directory = NULL;
+
+			if ($element && isset(self::$roots[$element])) {
+				$directory = preg_match(iw::REGEX_ABSOLUTE_PATH, self::$roots[$element])
+					? self::$roots[$element]
+					: APPLICATION_ROOT . iw::DS . self::$roots[$element];
 			}
 
-			$element = strtolower($element);
+			if (!$directory) {
+				if ($default) {
+					$directory = preg_match(iw::REGEX_ABSOLUTE_PATH, $default)
+						? $default
+						: APPLICATION_ROOT . iw::DS . $default;
+				} else {
+					$directory = APPLICATION_ROOT;
+				}
+			}
 
-			return (isset(self::$roots[$element]))
-				? self::$roots[$element]
-				: NULL;
+			return rtrim($directory, '/\\' . iw::DS);
 		}
 
 		/**
@@ -477,31 +496,31 @@
 		static public function getWriteDirectory($sub_directory = NULL)
 		{
 			if ($sub_directory) {
-
 				if ($sub_directory instanceof fDirectory) {
-					$sub_directory = $sub_directory->getPath();
+					$write_directory = $sub_directory;
+				} elseif (preg_match(iw::REGEX_ABSOLUTE_PATH, $sub_directory)) {
+					$write_directory = $sub_directory;
+				} else {
+					$write_directory = self::getWriteDirectory() . iw::DS . $sub_directory;
 				}
-				//
-				// Prevent an absolute sub directory from repeating the
-				// base write directory
-				//
-				if (strpos($sub_directory, self::$writeDirectory) === 0) {
-					$offset        = strlen(self::$writeDirectory);
-					$sub_directory = substr($sub_directory, $offset);
-				}
-
-				$write_directory = implode(DIRECTORY_SEPARATOR, array(
-					self::$writeDirectory,
-					trim($sub_directory, '/\\' . DIRECTORY_SEPARATOR)
-				));
-
 			} else {
 				$write_directory = self::$writeDirectory;
 			}
 
-			return (!is_dir($write_directory))
-				? fDirectory::create($write_directory)
-				: new fDirectory($write_directory);
+			if (!$write_directory instanceof fDirectory) {
+				$write_directory = (!is_dir($write_directory))
+					? fDirectory::create($write_directory)
+					: new fDirectory($write_directory);
+			}
+
+			if (!$write_directory->isWritable()) {
+				throw new fEnvironmentException (
+					'Request write directory "%s" is not writable',
+					(string) $write_directory
+				);
+			}
+
+			return $write_directory;
 		}
 
 		/**
@@ -517,14 +536,12 @@
 		 */
 		static public function init($config = NULL)
 		{
-			self::$roots['config'] = realpath(implode(DIRECTORY_SEPARATOR, array(
-				self::getRoot(),
-				self::DEFAULT_CONFIG_ROOT
-			)));
+			self::$config          = array();
+			self::$roots['config'] = iw::getRoot(NULL, self::DEFAULT_CONFIG_ROOT);
 
 			$config_cache = preg_match(self::REGEX_ABSOLUTE_PATH, $config)
 				? $config
-				: implode(DIRECTORY_SEPARATOR, array(
+				: implode(iw::DS, array(
 					self::getRoot('config'),
 					'.' . $config
 				));
@@ -535,22 +552,22 @@
 			}
 
 			if (!self::$config) {
-				self::$config = self::buildConfig($config, TRUE);
+				self::$config = self::buildConfig($config);
 			}
 
 			//
 			// Set up our write directory
 			//
 
-			self::$writeDirectory = implode(DIRECTORY_SEPARATOR, array(
-				self::getRoot(),
-				trim(
-					isset(self::$config['inkwell']['write_directory'])
-						? self::$config['inkwell']['write_directory']
-						: self::DEFAULT_WRITE_DIRECTORY,
-					'/\\' . DIRECTORY_SEPARATOR
-				)
-			));
+			$write_directory = isset(self::$config['inkwell']['write_directory'])
+				? self::$config['inkwell']['write_directory']
+				: self::DEFAULT_WRITE_DIRECTORY;
+
+			if (!preg_match(iw::REGEX_ABSOLUTE_PATH, $write_directory)) {
+				$write_directory = self::getRoot(NULL, $write_directory);
+			}
+
+			self::$writeDirectory = $write_directory;
 
 			//
 			// Configure our autoloaders
@@ -613,7 +630,7 @@
 				$interface_directories = self::$config['inkwell']['interfaces'];
 
 				foreach ($interface_directories as $interface_directory) {
-					$files = glob(implode(DIRECTORY_SEPARATOR, array(
+					$files = glob(implode(iw::DS, array(
 						self::getRoot(),
 						$interface_directory,
 						'*.php'
@@ -672,29 +689,31 @@
 				);
 			}
 
-			//
-			// Initialize the Session
-			//
+			if (!self::checkSAPI('cli')) {
+				//
+				// Initialize the Session
+				//
 
-			if (isset(self::$config['inkwell']['session_path'])) {
-				fSession::setPath(self::getWriteDirectory(
-					self::$config['inkwell']['session_path']
-				));
-			}
-
-			$session_length = isset(self::$config['inkwell']['session_length'])
-				? self::$config['inkwell']['session_length']
-				: '30 minutes';
-
-			fSession::setLength($session_length, $session_length);
-
-			if (isset(self::$config['inkwell']['persistent_session'])) {
-				if (self::$config['inkwell']['persistent_sessions']) {
-					fSession::enablePersistence();
+				if (isset(self::$config['inkwell']['session_path'])) {
+					fSession::setPath(self::getWriteDirectory(
+						self::$config['inkwell']['session_path']
+					));
 				}
-			}
 
-			fSession::open();
+				$session_length = isset(self::$config['inkwell']['session_length'])
+					? self::$config['inkwell']['session_length']
+					: '30 minutes';
+
+				fSession::setLength($session_length, $session_length);
+
+				if (isset(self::$config['inkwell']['persistent_session'])) {
+					if (self::$config['inkwell']['persistent_sessions']) {
+						fSession::enablePersistence();
+					}
+				}
+
+				fSession::open();
+			}
 
 			//
 			// Initialize the Databases
@@ -812,58 +831,46 @@
 			}
 
 			//
-			// Load the Scaffolder if we have a configuration for it
-			//
-
-			if (isset(self::$config['scaffolder'])) {
-				self::loadClass('Scaffolder');
-			}
-
-			//
 			// All other configurations have the following special properties
 			//
 			// 'class'          => Signifies which class the configuration maps to
 			// 'preload'        => Signifies that the class should be preloaded
 			// 'root_directory' => Used by the scaffolder and more
-			//
+			// 'autoloaders'    => Merged with system autoloaders
 			//
 
 			$preload_classes = array();
 
 			foreach (self::$config as $element => $config) {
 
-				$core = self::$config['__types']['core'];
+				if (!in_array($element, array_keys(iw::getConfigsByType('Core')))) {
 
-				if ($element !== '__types' && !in_array($element, $core)) {
+					$class = self::$classTranslations[$element] = isset($config['class'])
+						? $config['class']
+						: fGrammar::camelize($element, TRUE);
 
-					if (isset($config['class'])) {
-						$class = self::$classTranslations[$element] = $config['class'];
-					} else {
-						//
-						// Default convention is upper camelcase
-						//
-						self::$classTranslations[$element] = fGrammar::camelize($element, TRUE);
-						$class                             = self::$classTranslations[$element];
+					if (isset($config['preload']) && $config['preload']) {
+						$preload_classes[] = $class;
 					}
 
 					if (isset($config['root_directory'])) {
 						self::$roots[$element] = $config['root_directory'];
 					}
 
-					if (isset($config['auto_load'])	&& $config['auto_load']) {
-						if (isset(self::$roots[$element]) && self::$roots[$element]) {
-							self::$config['autoloaders'][$class] = self::$roots[$element];
+					if (isset($config['autoloaders']) && is_array($config['autoloaders'])) {
+						foreach ($config['autoloaders'] as $match => $target) {
+							if ($target == '*') {
+								self::$config['autoloaders'][$class] = self::$roots[$element];
+							} else {
+								self::$config['autoloaders'][$match] = $target;
+							}
 						}
-					}
-
-					if (isset($config['preload']) && $config['preload']) {
-						$preload_classes[] = $class;
 					}
 				}
 			}
 
 			foreach ($preload_classes as $class) {
-				self::loadClass($class);
+				iw::loadClass($class);
 			}
 
 			return self::$config;
@@ -878,11 +885,20 @@
 		 * @param string $class The class to initialize
 		 * @return bool Whether or not the initialization was successful
 		 */
-		static protected function initializeClass($class)
+		static public function initializeClass($class)
 		{
+			//
+			// Can't initialize a class that's not loaded
+			//
+
+			if (!class_exists($class, FALSE)) {
+				return FALSE;
+			}
+
 			//
 			// Classes cannot be initialized twice
 			//
+
 			if (in_array($class, self::$initializedClasses)) {
 				return TRUE;
 			}
@@ -967,19 +983,19 @@
 					//
 					// But maybe we do...
 					//
-					$file = implode(DIRECTORY_SEPARATOR, array(
+					$file = implode(iw::DS, array(
 						self::getRoot(),
 
 						//
 						// Trim leading or trailing directory separators from target
 						//
-						trim($target, '/\\' . DIRECTORY_SEPARATOR),
+						trim($target, '/\\' . iw::DS),
 
 						//
 						// Replace any backslashes in the class with directory separator
 						// to support Namespaces and trim the leading root namespace if present.
 						//
-						ltrim(str_replace('\\', DIRECTORY_SEPARATOR, $class), '\\') . '.php'
+						ltrim(str_replace('\\', iw::DS, $class), '\\') . '.php'
 					));
 
 					if (file_exists($file)) {
@@ -1000,7 +1016,8 @@
 
 		/**
 		 * Creates a target identifier from an entry and action.  If the entry consists of the
-		 * term 'link' then the action is treated as a URL.
+		 * term 'link' then the action is treated as a URL.  This is basically a quick way to
+		 * make static callbacks.
 		 *
 		 * @static
 		 * @access public
@@ -1010,10 +1027,6 @@
 		 */
 		static public function makeTarget($entry, $action)
 		{
-			if ($entry == 'link') {
-				return $action;
-			}
-
 			return implode('::', array($entry, $action));
 		}
 
@@ -1022,42 +1035,39 @@
 		 *
 		 * @static
 		 * @access public
-		 * @param string $target an inKWell target to redirect to
-		 * @param array $query an associative array containing parameters => values
+		 * @param string $target A URL or inKWell target to redirect to
+		 * @param array $params An associative array containing parameters => values
 		 * @param string $hash Optional hash tag
 		 * @param boolean $encode Whether or not to encode for HTML, default TRUE
-		 * @return string The appropriate URL for the provided parameters
+		 * @return string The appropriate URL
 		 */
-		static public function makeLink($target, $query = array(), $hash = NULL, $encode = TRUE)
+		static public function makeLink($target, $params = array(), $hash = NULL, $encode = TRUE)
 		{
 			if (!is_callable($target) && strpos($target, '*') !== 0) {
 
-				$ampersand = $encode ? '&amp;' : '&';
-
-				if (!count($query)) {
-					$query = NULL;
-				} elseif (fCore::checkVersion('5.4')) {
-					$query = '?' . http_build_query($query, '', $ampersand, PHP_QUERY_RFC3986);
-				} else {
-					$query = '?' . http_build_query($query, '', $ampersand);
+				if (count($query)) {
+					$ampersand = $encode ? '&amp;' : '&';
+					$target   .= fCore::checkVersion('5.4')
+						? '?' . http_build_query($params, '', $ampersand, PHP_QUERY_RFC3986)
+						: '?' . http_build_query($params, '', $ampersand);
 				}
 
-				if (strpos($target, '/') === 0 && Moor::getActiveProxyURI()) {
-					return Moor::getActiveProxyURI() . $target . $query;
+				if (strpos($target, '/') === 0 && ($poxy_uri = Moor::getActiveProxyURI())) {
+					$target = Moor::getActiveProxyURI() . $target;
 				}
 
-				return $target . $query . ($hash ? '#' . $hash : NULL);
+			} else {
+				if (count($symbols = array_keys($params))) {
+					$target .= ' ' . implode($symbols, ' ');
+				};
+
+				$target = call_user_func_array('Moor::linkTo', array_merge(
+					array($target),
+					$params
+				));
 			}
 
-			$params = array_keys($query);
-
-			$target = (array_unshift($params, $target) == 1)
-				? $target
-				: implode(' ', $params);
-
-			$params = array_merge(array($target), $query);
-
-			return call_user_func_array('Moor::linkTo', $params) . ($hash ? '#' . $hash : NULL);
+			return $target . ($hash ? '#' . $hash : NULL);
 		}
 
 		/**
@@ -1067,27 +1077,22 @@
 		 * @access public
 		 * @param array $config The configuration array
 		 * @param string $file The file to write to, optional if overwriting the default config
-		 * @param boolean $quiet Whether or not to output information, defaulted to FALSE
 		 * @return mixed Number of bytes written to file or FALSE on failure
 		 */
-		static public function writeConfig(array $config, $file = NULL, $quiet = FALSE)
+		static public function writeConfig(array $config, $file = self::DEFAULT_CONFIG)
 		{
-			if (!$file) {
-				$file = '.' . self::DEFAULT_CONFIG;
-			}
+			$file = !preg_match(self::REGEX_ABSOLUTE_PATH, $file)
+				? realpath(self::getRoot('config') . iw::DS) . '.' . $file
+				: $file;
 
-			if (!preg_match(self::REGEX_ABSOLUTE_PATH, $file)) {
-				$file = realpath(self::getRoot('config') . DIRECTORY_SEPARATOR . $file);
-			}
+			if (self::checkSAPI('cli')) {
+				echo 'Writing configuration file...' . iw::LB;
+				echo ($result = file_put_contents($file, serialize($config)))
+					? 'Success'
+					: 'Failure';
 
-			if (!$quiet) {
-				echo "Writing configuration file...";
-			}
-
-			$result = file_put_contents($file, serialize($config));
-
-			if (!$quiet) {
-				echo ($result) ? 'Sucess!' : 'Failure';
+			} else {
+				$result = file_put_contents($file, serialize($config));
 			}
 
 			return $result;
