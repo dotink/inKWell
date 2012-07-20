@@ -1045,7 +1045,7 @@
 		{
 			if (!is_callable($target) && strpos($target, '*') !== 0) {
 
-				if (count($query)) {
+				if (count($params)) {
 					$ampersand = $encode ? '&amp;' : '&';
 					$target   .= fCore::checkVersion('5.4')
 						? '?' . http_build_query($params, '', $ampersand, PHP_QUERY_RFC3986)
