@@ -551,10 +551,11 @@
 		 * @access protected
 		 * @param string $target an inKWell target to redirect to
 		 * @param array $query an associative array containing parameters => values
+		 * @param string $hash The hash/fragment for the redirect, without a leading #
 		 * @param int $type 3xx HTTP Code to send (normalized for HTTP version), default 302/303
 		 * @return void
 		 */
-		static protected function redirect($target = NULL, $query = array(), $type = 303)
+		static protected function redirect($target = NULL, $query = array(), $hash = NULL, $type = 303)
 		{
 			$protocol = strtoupper($_SERVER['SERVER_PROTOCOL']);
 
@@ -590,7 +591,7 @@
 				fURL::redirect();
 			}
 
-			fURL::redirect(iw::makeLink($target, $query, NULL, FALSE));
+			fURL::redirect(iw::makeLink($target, $query, $hash, FALSE));
 		}
 
 		/**
