@@ -74,36 +74,12 @@
 		 */
 		static public function __init(array $config = array(), $element = NULL)
 		{
-
-			self::$viewRoot = implode(DIRECTORY_SEPARATOR, array(
-				iw::getRoot(),
-				($root_directory = iw::getRoot($element))
-					? $root_directory
-					: self::DEFAULT_VIEW_ROOT
-			));
-
-			self::$viewRoot       = new fDirectory(self::$viewRoot);
+			self::$viewRoot       = iw::getRoot($element, self::DEFAULT_VIEW_ROOT);
 			self::$cacheDirectory = iw::getWriteDirectory(
 				isset($config['cache_directory'])
 					? $config['cache_directory']
 					: self::DEFAULT_CACHE_DIRECTORY
 			);
-
-			try {
-				self::$cacheDirectory = new fDirectory(self::$cacheDirectory);
-			} catch (fValidationException $e) {
-				throw new fEnvironmentException (
-					'Cache directory %s does not exist',
-					self::$cacheDirectory
-				);
-			}
-
-			if (!self::$cacheDirectory->isWritable()) {
-				throw new fEnvironmentException (
-					'Cache directory %s is not writable',
-					self::$cacheDirectory
-				);
-			}
 
 			if (!isset($config['disable_minification']) || !$config['disable_minification']) {
 				if (isset($config['minification_mode'])) {
