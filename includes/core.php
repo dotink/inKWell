@@ -496,31 +496,14 @@
 		static public function getWriteDirectory($sub_directory = NULL)
 		{
 			if ($sub_directory) {
-				if ($sub_directory instanceof fDirectory) {
-					$write_directory = $sub_directory;
-				} elseif (preg_match(iw::REGEX_ABSOLUTE_PATH, $sub_directory)) {
-					$write_directory = $sub_directory;
-				} else {
-					$write_directory = self::getWriteDirectory() . iw::DS . $sub_directory;
-				}
+				$write_directory = preg_match(iw::REGEX_ABSOLUTE_PATH, $sub_directory)
+					? $sub_directory
+					: self::getWriteDirectory() . iw::DS . $sub_directory;
 			} else {
 				$write_directory = self::$writeDirectory;
 			}
 
-			if (!$write_directory instanceof fDirectory) {
-				$write_directory = (!is_dir($write_directory))
-					? fDirectory::create($write_directory)
-					: new fDirectory($write_directory);
-			}
-
-			if (!$write_directory->isWritable()) {
-				throw new fEnvironmentException (
-					'Request write directory "%s" is not writable',
-					(string) $write_directory
-				);
-			}
-
-			return $write_directory;
+			return rtrim($write_directory, '/\\' . iw::DS);
 		}
 
 		/**
