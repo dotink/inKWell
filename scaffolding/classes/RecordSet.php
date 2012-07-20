@@ -1,11 +1,11 @@
 	/**
 	 * The <%= $class %> is a recordset representing a collection of
-	 * <%= $active_record %> objects / records.
+	 * <%= ActiveRecord::classFromRecordSet($class) %> objects / records.
 	 *
 	 * @author Matthew J. Sahagian [mjs] <gent@dotink.org>
 	 * @copyright Copyright (c) 2011, Matthew J. Sahagian
 	 */
-	class <%= self::validateVariable($class) %> extends <%= self::validateVariable($build_class) %>
+	class <%= self::validateVariable($class) %> extends <%= self::validateVariable($parent_class) %>
 
 	{
 		/**

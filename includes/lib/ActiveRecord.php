@@ -438,24 +438,18 @@
 		 * @static
 		 * @access public
 		 * @param string $record_class The class name to scaffold
-		 * @return boolean TRUE if the record class was scaffolded, FALSE otherwise
+		 * @param array $template_vars Requested template vars
+		 * @return void
 		 */
-		static public function __make($record_class)
+		static public function __make($record_class, $template_vars = array())
 		{
-			$template = implode(DIRECTORY_SEPARATOR, array(
-				'classes',
-				__CLASS__ . '.php'
+			Scaffolder::make('classes' . iw::DS . __CLASS__ . '.php', array_merge(
+				array(
+					'parent_class' => __CLASS__,
+					'class'        => $record_class
+				),
+				$template_vars
 			));
-
-			Scaffolder::make($template, array(
-				'class' => $record_class
-			), __CLASS__);
-
-			if (self::classExists($record_class, FALSE)) {
-				return TRUE;
-			}
-
-			return FALSE;
 		}
 
 		/**

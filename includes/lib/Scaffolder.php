@@ -13,7 +13,7 @@
 	 *
 	 * @package inKWell
 	 */
-	class Scaffolder extends iw implements inkwell
+	class Scaffolder implements inkwell
 	{
 
 		const DEFAULT_SCAFFOLDING_ROOT = 'scaffolding';
@@ -71,27 +71,14 @@
 				return FALSE;
 			}
 
-			self::$scaffoldingRoot = implode(DIRECTORY_SEPARATOR, array(
-				iw::getRoot(),
-				($root_directory = iw::getRoot($element))
-					? $root_directory
-					: self::DEFAULT_SCAFFOLDING_ROOT
-			));
+			self::$scaffoldingRoot = iw::getRoot('scaffolding', self::DEFAULT_SCAFFOLDING_ROOT);
 
-			self::$scaffoldingRoot = new fDirectory(self::$scaffoldingRoot);
-			$register_autoloader   = FALSE;
+			spl_autoload_register(iw::makeTarget(__CLASS__, 'loadClass'));
 
-			foreach (iw::getConfig() as $element => $element_config) {
-				if (isset($element_config['auto_scaffold'])) {
-					if ($element_config['auto_scaffold']) {
-						$register_autoloader         = TRUE;
-						self::$autoScaffoldClasses[] = iw::classize($element);
-					}
+			foreach (iw::getConfig() as $element => $config) {
+				if (isset($config['auto_scaffold']) && $config['auto_scaffold']) {
+					self::$autoScaffoldClasses[] = iw::classize($element);
 				}
-			}
-
-			if ($register_autoloader) {
-				spl_autoload_register(iw::makeTarget(__CLASS__, 'loadClass'));
 			}
 
 			return TRUE;
@@ -110,7 +97,7 @@
 		{
 			foreach (self::$autoScaffoldClasses as $loader) {
 
-				$test = iw::makeTarget($loader, self::MATCH_CLASS_METHOD);
+				$test = iw::makeTarget($loader, iw::MATCH_CLASS_METHOD);
 				$make = iw::makeTarget($loader, self::DYNAMIC_SCAFFOLD_METHOD);
 
 				if (is_callable($test) && is_callable($make)) {
@@ -139,68 +126,44 @@
 		 */
 		static public function build($builder, $target, $template_vars = array())
 		{
+			if (preg_match(iw::REGEX_ABSOLUTE_PATH, $target)) {
+				$output_file = $target;
+			} else {
+
+				//
+				// If we were not provided an absolute path then we can try to get a root
+				// of the target.  If the target is a relative file this will likely not
+				// match anything and we'll just get it relative to the APPLICATION_ROOT.
+				//
+
+				$output_file = iw::getRoot(iw::elementize($builder)) . iw::DS . $target;
+			}
+
+			//
+			// In both circumstances, we want to make sure we have an extension
+			//
+
+			$output_file = !($extension = pathinfo($target, PATHINFO_EXTENSION))
+				? $output_file . '.php'
+				: $output_file;
+
 			self::$isBuilding = TRUE;
 
-			try {
+			if (preg_match(iw::REGEX_VARIABLE, $builder) && class_exists($builder)) {
 
-				$root_directory = rtrim(implode(DIRECTORY_SEPARATOR, array(
-					iw::getRoot(),
-					iw::getRoot(fGrammar::underscorize($builder))
-				)), '/\\' . DIRECTORY_SEPARATOR);
+				$make  = iw::makeTarget($builder, self::DYNAMIC_SCAFFOLD_METHOD);
+				$build = iw::makeTarget($builder, self::FINAL_SCAFFOLD_METHOD);
 
-				if (is_string($target)) {
-					$output_file = implode(DIRECTORY_SEPARATOR, array(
-						$root_directory,
-						!($extension = pathinfo($target, PATHINFO_EXTENSION))
-							? $target . '.php'
-							: $target
-					));
-				} else {
-					$output_file = NULL;
+				if (is_callable($make)) {
+					call_user_func($make, $target, $template_vars);
 				}
 
-				if (preg_match(iw::REGEX_VARIABLE, $builder) && class_exists($builder)) {
-
-					$make_method = iw::makeTarget($builder, self::DYNAMIC_SCAFFOLD_METHOD);
-
-					if (is_callable($make_method)) {
-						$make_target = pathinfo($target, PATHINFO_FILENAME);
-						call_user_func($make_method, $make_target);
-					}
-
-					$build_method = iw::makeTarget($builder, self::FINAL_SCAFFOLD_METHOD);
-
-					if (is_callable($build_method)) {
-						call_user_func(
-							$build_method,
-							$target,
-							$output_file,
-							self::$lastScaffoldedCode
-						);
-					} else {
-						$file = fFile::create(
-							$output_file,
-							self::$lastScaffoldedCode
-						);
-					}
-				} else {
-					self::make($builder, $template_vars, NULL, FALSE);
-
-					$file = fFile::create(
-						realpath(implode(DIRECTORY_SEPARATOR, array(
-							APPLICATION_ROOT,
-							pathinfo($target, PATHINFO_DIRNAME)
-						))) . DIRECTORY_SEPARATOR . pathinfo($target, PATHINFO_BASENAME),
-						self::$lastScaffoldedCode
-					);
-				}
-
-				self::$lastScaffoldedCode = NULL;
-				self::$isBuilding         = FALSE;
-			} catch (Exception $e) {
-				self::$isBuilding = FALSE;
-				throw $e;
+				return (is_callable($build))
+					? call_user_func($build, $target, $output_file, self::$lastScaffoldedCode)
+					: fFile::create($output_file, self::$lastScaffoldedCode);
 			}
+
+			return fFile::create($output_file, self::make($builder, $template_vars, FALSE));
 		}
 
 		/**
@@ -210,50 +173,62 @@
 		 * @static
 		 * @access public
 		 * @param string $template The template to use for scaffolding
-		 * @param array $template_vars An associative array of variables to import into the template
-		 * @param string $build_class The class from which scaffolding is running
+		 * @param array $template_vars An associative array of variables => values for templating
 		 * @param boolean $eval Whether or not the code should be evalulated.
 		 * @return string The code
 		 */
-		static public function make($template, $template_vars = array(), $build_class = NULL, $eval = TRUE)
+		static public function make($template, $template_vars = array(), $eval = TRUE)
 		{
-
 			if (extract($template_vars, EXTR_SKIP) == sizeof($template_vars)) {
 
-				$template = implode(DIRECTORY_SEPARATOR, array(
-					self::$scaffoldingRoot,
-					(pathinfo($template, PATHINFO_EXTENSION))
-						? $template
-						: $template . '.php'
-				));
+				$template  = self::$scaffoldingRoot . iw::DS . $template;
+				$template  = ($extension = pathinfo($template, PATHINFO_EXTENSION))
+					? $template
+					: $template . '.php';
 
-				if (!is_readable($template)) {
-					throw new fProgrammerException(
-						'Scaffolder cannot make %s, template %s not found',
-						$class,
-						$template
-					);
-				} else {
-					ob_start();
-					include $template;
-					$code = ob_get_clean();
+				if (is_readable($template)) {
 
-					if ($eval) {
-						eval($code);
+					$code = self::capture($template, $template_vars);
+
+					if (self::$isBuilding) {
+						self::$lastScaffoldedCode = $code;
+						self::$isBuilding         = FALSE;
 					}
 
-					$code = '<?php' . "\n\n" . $code;
+					if ($eval) {
+						eval('?>' . $code);
+					}
 
-					return (self::$isBuilding)
-						? (self::$lastScaffoldedCode = $code)
-						: $code;
+					return $code;
 				}
 
-			} else {
 				throw new fProgrammerException(
-					'Cannot scaffold, invalid template variable names'
+					'Cannot scaffold, unable to read template "%s"',
+					$template
 				);
+
 			}
+
+			throw new fProgrammerException(
+				'Cannot scaffold, invalid template variable names'
+			);
+		}
+
+		/**
+		 * Captures scaffolded/templated code in an isolated area
+		 *
+		 * @static
+		 * @private
+		 * @param string $___template The template to include
+		 * @param array $___vars The template variables
+		 * @return string The scaffolded code
+		 */
+		static private function capture($___template, $___vars)
+		{
+			ob_start();
+			extract($___vars);
+			include $___template;
+			return '<?php' . "\n\n" . ob_get_clean();
 		}
 
 		/**

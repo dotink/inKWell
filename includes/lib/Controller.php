@@ -224,25 +224,19 @@
 		 *
 		 * @static
 		 * @access public
-		 * @param string $record_class The class name to scaffold
-		 * @return boolean TRUE if the controller class was scaffolded, FALSE otherwise
+		 * @param string $controller_class The class name to scaffold
+		 * @param array $template_vars Requested template vars
+		 * @return void
 		 */
-		static public function __make($controller_class)
+		static public function __make($controller_class, $template_vars = array())
 		{
-			$template = implode(DIRECTORY_SEPARATOR, array(
-				'classes',
-				__CLASS__ . '.php'
+			Scaffolder::make('classes' . iw::DS . __CLASS__ . '.php', array_merge(
+				array(
+					'parent_class' => __CLASS__,
+					'class'        => $controller_class
+				),
+				$template_vars
 			));
-
-			Scaffolder::make($template, array(
-				'class' => $controller_class
-			), __CLASS__);
-
-			if (class_exists($controller_class, FALSE)) {
-				return TRUE;
-			}
-
-			return FALSE;
 		}
 
 		/**

@@ -4,7 +4,7 @@
 	 * @author Matthew J. Sahagian [mjs] <gent@dotink.org>
 	 * @copyright Copyright (c) 2011, Matthew J. Sahagian
 	 */
-	class <%= self::validateVariable($class) %> extends <%= self::validateVariable($build_class) %>
+	class <%= self::validateVariable($class) %> extends <%= self::validateVariable($parent_class) %>
 
 	{
 		/**

@@ -44,31 +44,23 @@
 		}
 
 		/**
-		 * Dynamically scaffolds a Record Set
+		 * Dynamically scaffolds a Record Set class
 		 *
 		 * @static
 		 * @access public
-		 * @param string $record_set The Class name to dynamically define
-		 * @return boolean TRUE if a recordset was dynamically defined, FALSE otherwise
+		 * @param string $record_set_class The class name to scaffold
+		 * @param array $template_vars Requested template vars
+		 * @return void
 		 */
-		static public function __make($record_set)
+		static public function __make($record_set_class, $template_vars = array())
 		{
-			$record_class = ActiveRecord::classFromRecordSet($record_set);
-			$template     = implode(DIRECTORY_SEPARATOR, array(
-				'classes',
-				__CLASS__ . '.php'
+			Scaffolder::make('classes' . iw::DS . __CLASS__ . '.php', array_merge(
+				array(
+					'parent_class' => __CLASS__,
+					'class'        => $record_set_class
+				),
+				$template_vars
 			));
-
-			Scaffolder::make($template, array(
-				'class'         => $record_set,
-				'active_record' => $record_class
-			), __CLASS__);
-
-			if (self::classExists($record_set, FALSE)) {
-				return TRUE;
-			}
-
-			return FALSE;
 		}
 
 		/**
