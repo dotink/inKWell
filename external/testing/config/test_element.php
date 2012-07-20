@@ -1,5 +1,6 @@
 <?php
 
-	return iw::createConfig('Core', array(
+	return iw::createConfig('Library', array(
+		'class'      => 'ACustomClass',
 		'test_value' => 'foo'
 	));

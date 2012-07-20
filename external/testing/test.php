@@ -1,6 +1,17 @@
 <?php
 
 	//
+	// Fake a Server
+	//
+
+	$_SERVER['DOCUMENT_ROOT']   = '/';
+	$_SERVER['REQUEST_URI']     = '/';
+	$_SERVER['REQUEST_METHOD']  = 'GET';
+	$_SERVER['REMOTE_ADDR']     = '127.0.0.1';
+	$_SERVER['SERVER_NAME']     = 'localhost';
+	$_SERVER['SERVER_PROTOCOL'] = 'HTTP/1.1';
+
+	//
 	// If our document root has been moved to a subdirectory of the actual application
 	// directory, then we need to find it.
 	//
@@ -42,4 +53,4 @@
 	require dirname(__FILE__) . DIRECTORY_SEPARATOR . 'EnhanceTestFramework.php';
 
 	\Enhance\Core::discoverTests(TEST_ROOT . DIRECTORY_SEPARATOR . 'tests', TRUE);
-	\Enhance\Core::runTests();
+	\Enhance\Core::runTests(\Enhance\TemplateType::Tap);
