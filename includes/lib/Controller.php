@@ -161,14 +161,7 @@
 			//
 			// Configure our Controller Root
 			//
-			self::$controllerRoot = implode(DIRECTORY_SEPARATOR, array(
-				iw::getRoot(),
-				($root_directory = iw::getRoot($element))
-					? $root_directory
-					: self::DEFAULT_CONTROLLER_ROOT
-			));
-
-			self::$controllerRoot = new fDirectory(self::$controllerRoot);
+			self::$controllerRoot = iw::getRoot($element, self::DEFAULT_CONTROLLER_ROOT);
 
 			//
 			// Configure default accept types

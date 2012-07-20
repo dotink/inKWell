@@ -925,7 +925,7 @@
 			//
 			// Determine class configuration and call __init with it
 			//
-			$element      = fGrammar::underscorize($class);
+			$element      = self::elementize($class);
 			$class_config = (isset(self::$config[$element]))
 				? self::$config[$element]
 				: array();
