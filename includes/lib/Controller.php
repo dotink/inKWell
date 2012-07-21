@@ -110,14 +110,16 @@
 					? rtrim($config['base_url'], '/')
 					: '/';
 
-				self::$baseURLs[$base_url] = array(
-					'use_ssl'        => FALSE,
-					'error_handlers' => array(),
-					'accept_types'   => array(
-						'text/html',
-						'application/json'
-					)
-				);
+				if (!isset(self::$baseURLs[$base_url])) {
+					self::$baseURLs[$base_url] = array(
+						'use_ssl'        => FALSE,
+						'error_handlers' => array(),
+						'accept_types'   => array(
+							'text/html',
+							'application/json'
+						)
+					);
+				}
 
 				$base_url_config = &self::$baseURLs[$base_url];
 
