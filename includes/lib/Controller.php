@@ -30,7 +30,7 @@
 		 * @access private
 		 * @var string
 		 */
-		static private $baseURL = '';
+		static private $baseURL = '/';
 
 		/**
 		 * All configured base URLs and their options
@@ -108,7 +108,7 @@
 
 				$base_url = isset($config['base_url'])
 					? rtrim($config['base_url'], '/')
-					: '';
+					: '/';
 
 				self::$baseURLs[$base_url] = array(
 					'use_ssl'        => FALSE,
@@ -119,22 +119,24 @@
 					)
 				);
 
-				$base_url_config = &self::$baseURL[$base_url];
+				$base_url_config = &self::$baseURLs[$base_url];
 
 				//
 				// Configure whether or not we need to use SSL on this base URL
 				//
 
 				if (isset($config['use_ssl'])) {
-					self::$baseURLs[$base_url]['use_ssl'] = $config['use_ssl'];
+					$base_url_config['use_ssl'] = $config['use_ssl'];
 				}
 
 				//
 				// Figure out the current BaseURL
 				//
 
+				$request_path = Moor::getRequestPath();
+
 				foreach (array_keys(self::$baseURLs) as $base_url) {
-					if (stripos(Moor::getRequestPath(), $base_url) === 0) {
+					if (stripos($request_path, $base_url) === 0) {
 						if (strlen($base_url) > self::$baseURL) {
 							self::$baseURL = $base_url;
 						}
@@ -365,7 +367,7 @@
 		 */
 		static protected function checkBaseURL($base_url)
 		{
-			return (self::getBaseURL() == (!$base_url ? '' : $base_url));
+			return (self::getBaseURL() == (!$base_url ? '/' : $base_url));
 		}
 
 		/**
@@ -532,19 +534,27 @@
 		{
 			$handler = NULL;
 
-			if (isset(self::$baseURLs[iw::getBaseURL()]['error_handlers'][$error])) {
-				$handler = self::$baseURLs[iw::getBaseURL()]['error_handlers'][$error];
-			} elseif (isset(self::$baseURLs['']['error_handlers'][$error])) {
-				$handler = self::$baseURLs['']['error_handlers'][$error];
-			}
+			//
+			// Try to get a handler for the default base URL
+			//
+
+			$handler = isset(self::$baseURLs['/']['error_handlers'][$error])
+				? self::$baseURLs['/']['error_handlers'][$error]
+				: $handler;
+
+			//
+			// Try to get a custom handler
+			//
+
+			$handler = isset(self::$baseURLs[self::getBaseURL()]['error_handlers'][$error])
+				? self::$baseURLs[self::getBaseURL()]['error_handlers'][$error]
+				: $handler;
 
 			if (is_callable($handler)) {
-				$message = call_user_func($error, $headers, $message);
+				Response::register(call_user_func($handler, $error, $headers, $message));
+			} else {
+				Response::register($message);
 			}
-
-			$response = new Response($error, self::acceptTypes(), $headers, $message);
-
-			Response::register($response);
 
 			self::yield();
 		}

@@ -94,11 +94,11 @@
 
 		$base_url = isset($controller_config['base_url'])
 			? rtrim($controller_config['base_url'], '/')
-			: '';
+			: NULL;
 
 		foreach ($controller_config['routes'] as $route => $target) {
 
-			$route       = $base_url . '/' . $route;
+			$route       = $base_url . $route;
 			$route_parts = explode('/', $route);
 			$route_depth = count($route_parts);
 			$specificity = $route_depth * 10;
@@ -129,7 +129,7 @@
 
 	arsort($ordered_routes);
 
-	foreach ($ordered_routes as $route) {
+	foreach (array_keys($ordered_routes) as $route) {
 		Moor::route($route, $routes[$route]);
 	}
 

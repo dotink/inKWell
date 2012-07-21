@@ -120,7 +120,6 @@
 			}
 
 			if (!is_object($content)) {
-
 				if ($content === NULL) {
 					$response = self::$defaultResponse;
 					$content  = isset(self::$responses[self::$defaultResponse]['body'])
@@ -132,26 +131,34 @@
 				}
 
 				//
-				// Sometimes our response is just a string or a number or whatever.  This allows
-				// us to take any such response and hopefully cache it.  We make two passes
+				// Sometimes our content is just a string or a number or whatever.  We attempt
+				// to cache the response and then create a new one based on its mime type.
 				//
 
 				$cache_file = self::cache(NULL, $content);
 
 				return new self($response, $cache_file->getMimeType(), array(), $content);
 
-			} elseif ($response instanceof self) {
+			} elseif ($content instanceof self) {
 
-				return $response;
+				//
+				// If our content is already a response our job is easy
+				//
+
+				return $content;
 
 			}
 
 			//
-			// This will support legacy methods whereby content type and headers was
-			// sent more manually inside the controller
+			// Previous versions of inKWell may have responded with objects such as View or
+			// fImage.  The short answer here is that if we receive content to resolve, we
+			// are going to assume that they want an OK, as controller::triggerError() was
+			// still promoted.  If that is the case, we can create a response object
+			// directly and use the content as we see fit.  The send() method will take care
+			// of how to output it.
 			//
 
-			return new self('ok', NULL, array(), $response);
+			return new self('ok', NULL, array(), $content);
 		}
 
 		/**
@@ -244,7 +251,11 @@
 		/**
 		 * Create a new response object
 		 *
-		 * @param
+		 * @param string $status The status string, ex: 'ok', 'not_found', ...
+		 * @param string $type The mimetype to send as
+		 * @param array $headers Additional headers to output
+		 * @param mixed $view The view to send, i.e. the content
+		 * @return void
 		 */
 		public function __construct($status, $type = NULL, $headers = array(), $view = NULL)
 		{
@@ -283,8 +294,8 @@
 		 */
 		public function send()
 		{
-			$version = end(explode($_SERVER['SERVER_PROTOCOL'], '/'));
-			$aliases = array(
+			$version  = end(explode($_SERVER['SERVER_PROTOCOL'], '/'));
+			$aliases  = array(
 				'1.0' => array( 405 => 400, 406 => 400 /* NO NEED FOR REDIRECTS */ ),
 				'1.1' => array( /* CURRENT VERSION OF HTTP SO WE SHOULD BE GOOD */ )
 			);
@@ -294,23 +305,34 @@
 				? $aliases[$version][$this->code]
 				: $this->code;
 
-			if (!iw::checkSAPI('cgi-fcgi')) {
-				header(sprintf('%s %d %s', $_SERVER['SERVER_PROTOCOL'], $status, $response));
-			} else {
-				$this->headers['Status'] = sprintf('%d %s', $status, $response);
-			}
+			$content  = is_callable($this->renderer)
+				? call_user_func($this->renderer, $this->view, $this)
+				: $this->view;
 
-			if (is_callable($this->renderer)) {
-				$content = call_user_func($this->renderer, $this->view, $this);
-			} else {
-				$content = $this->view;
-			}
+			//
+			// Output all of our headers.
+			//
+			// Apparently fastCGI explicitly does not like the standard header format, so
+			// so we send different leading headers based on that.  The content type downward,
+			// however, is exactly the same.
+			//
 
-			$this->headers['Content-Type'] = $this->type;
+			header(!iw::checkSAPI('cgi-fcgi')
+				? sprintf('%s %d %s', $_SERVER['SERVER_PROTOCOL'], $status, $response)
+				: sprintf('Status: %d %s', $status, $response)
+			);
+
+			header(sprintf('Content-Type: %s', $this->type));
 
 			foreach ($this->headers as $header => $value) {
 				header($header . ': ' . $value);
 			}
+
+			//
+			// Older versions of inKWell used to do something like this in the index file.
+			// Basically, we want to determine if our final content is an object of some sorts
+			// and call different methods depending.
+			//
 
 			if (is_object($content)) {
 				switch (strtolower(get_class($content))) {
@@ -323,6 +345,11 @@
 						exit(1);
 				}
 			}
+
+			//
+			// Last, but not least, if our content appears to be just some normal variable,
+			// echo it.
+			//
 
 			echo $content;
 			exit(1);
