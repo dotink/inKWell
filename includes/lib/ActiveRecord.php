@@ -163,6 +163,7 @@
 				//
 				// Configure active records
 				//
+
 				$ar_configs = iw::getConfigsByType(__CLASS__);
 
 				foreach ($ar_configs as $config_element => $config) {
@@ -213,12 +214,16 @@
 			//
 			// Set Configuration Defaults
 			//
-			self::$info[$record_class]['id_column'] = NULL;
-			self::$info[$record_class]['order']     = array();
+
+			self::$info[$record_class] = array(
+				'id_column' => NULL,
+				'order'     => array()
+			);
 
 			//
 			// Set an explicit ID column or attempt to find a natural one
 			//
+
 			if (isset($config['id_column']) && !empty($config['id_column'])) {
 				self::$info[$record_class]['id_column'] = $config['id_column'];
 			} else {
@@ -230,6 +235,7 @@
 			//
 			// If we have a slug column make sure it's unique
 			//
+
 			if (isset($config['slug_column'])) {
 				$valid_slug_column = FALSE;
 				$slug_column       = $config['slug_column'];
@@ -258,6 +264,7 @@
 			//
 			// Set any explicitly configure order
 			//
+
 			if (isset($config['order']) && is_array($config['order'])) {
 				self::$info[$record_class]['order'] = $config['order'];
 			}
@@ -284,6 +291,7 @@
 				//
 				// Add each specially configured column's ORM mappings and callback
 				//
+
 				foreach ($config[$column_config] as $key => $column) {
 
 					self::$info[$record_class][$column_config][$key] = $column;
@@ -293,6 +301,7 @@
 						//
 						// Special handling of image columns
 						//
+
 						case 'image_columns':
 							fORMFile::configureImageUploadColumn(
 								$record_class,
@@ -310,6 +319,7 @@
 						//
 						// Special handling of file columns
 						//
+
 						case 'file_columns':
 							fORMFile::configureFileUploadColumn(
 								$record_class,
@@ -327,6 +337,7 @@
 						//
 						// Special handling for order columns
 						//
+
 						case 'order_columns':
 							fORMOrdering::configureOrderingColumn(
 								$record_class,
@@ -343,6 +354,7 @@
 						//
 						// Special handling for URL columns
 						//
+
 						case 'url_columns':
 							fORMColumn::configureLinkColumn(
 								$record_class,
@@ -353,6 +365,7 @@
 						//
 						// Special handling for e-mail columns
 						//
+
 						case 'email_columns':
 							fORMColumn::configureEmailColumn(
 								$record_class,
@@ -363,6 +376,7 @@
 						//
 						// Special handling for money columns
 						//
+
 						case 'money_columns':
 							fORMMoney::configureMoneyColumn(
 								$record_class,
@@ -377,6 +391,7 @@
 			//
 			// If any password columns wer configured/set above, add our custom hook
 			//
+
 			if (count(self::$info[$record_class]['password_columns'])) {
 				fORM::registerHookCallback(
 					$record_class,
@@ -388,6 +403,7 @@
 			//
 			// Set all non-configurable / schema-provided information
 			//
+
 			self::$info[$record_class]['columns']        = array();
 			self::$info[$record_class]['pkey_columns']   = array();
 			self::$info[$record_class]['pkey_methods']   = array();
@@ -842,11 +858,11 @@
 			$pkey_columns    = self::getInfo($record_class, 'pkey_columns');
 			$changed_columns = array_keys($old_values);
 
-			if (in_array($slug_column, $changed_columns)) {
+			if ($slug_column && in_array($slug_column, $changed_columns)) {
 				$object->slug = NULL;
 			}
 
-			if (count(array_intersect($pkey_columns, $changed_columns))) {
+			if ($pkey_columns && count(array_intersect($pkey_columns, $changed_columns))) {
 				$object->resourceKey = NULL;
 				if ($object->slug) {
 					$object->slug = NULL;
