@@ -1024,13 +1024,11 @@
 		{
 			if (isset(self::$info[$record_class])) {
 				if ($key !== NULL) {
-
 					if (isset(self::$info[$record_class][$key])) {
 						return self::$info[$record_class][$key];
 					}
 
 				} else {
-
 					return self::$info[$record_class];
 				}
 			}
