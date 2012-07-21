@@ -95,6 +95,10 @@
 				? array_merge($required_responses, $config['responses'])
 				: $required_responses;
 
+			if (is_array($default_renderers = iw::getConfig('response', 'renderers'))) {
+				self::$renderers = $default_renderers;
+			}
+
 			foreach (iw::getConfigsByType('Response') as $config) {
 				if (isset($config['renderers'])) {
 					self::$renderers = array_merge(self::$renderers, $config['renderers']);
@@ -187,6 +191,11 @@
 					case 'fimage':
 					case 'ffile':
 						$response->view = $response->view->read();
+						break;
+					default:
+						$response->view = is_callable(array($response->view, '__toString'))
+							? (string) $response->view
+							: get_class($this->view);
 						break;
 				}
 			}
@@ -299,8 +308,8 @@
 				$this->renderHooks[] = self::$renderers['*'];
 			}
 
-			foreach ($this->renderHooks as $type_match => $callback) {
-				if (preg_match('#' . $type_match . '#', $this->type)) {
+			foreach (self::$renderers as $type_match => $callback) {
+				if ($type_match != '*' && preg_match('#' . $type_match . '#', $this->type)) {
 					$this->renderHooks[] = $callback;
 				}
 			}
