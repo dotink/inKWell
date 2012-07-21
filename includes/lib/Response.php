@@ -356,9 +356,9 @@
 			// We want to let any renderers work their magic before deciding anything.
 			//
 			if (count($this->renderHooks)) {
-				foreach ($this->renderHooks as $callback) {
-					if (is_callable($this->renderHooks)) {
-						call_user_func($callback, $this);
+				foreach ($this->renderHooks as $renderCallback) {
+					if (is_callable($renderCallback)) {
+						call_user_func($renderCallback, $this);
 					}
 				}
 			}
