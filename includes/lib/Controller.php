@@ -295,6 +295,7 @@
 
 			if (count($best_accept_types)) {
 				$best_type = Request::getBestAcceptType($best_accept_types);
+
 				if ($best_type !== FALSE) {
 					if (!Request::getFormat()) {
 						foreach(Request::getFormatTypes() as $format => $types) {
@@ -573,7 +574,18 @@
 			if (is_callable($handler)) {
 				Response::register(call_user_func($handler, $error, $headers, $message));
 			} else {
-				Response::register(new Response($error, self::acceptTypes(), $headers, $message));
+
+				//
+				// If we are seeing a not acceptable error, we cannot rely on the
+				// self::acceptTypes().  At this point, whatever we give them is not going to be
+				// what they want, so they can deal with it.
+				//
+
+				$mime_type = ($error != 'not_acceptable')
+					? self::acceptTypes()
+					: NULL;
+
+				Response::register(new Response($error, $mime_type, $headers, $message));
 			}
 
 			self::yield();

@@ -21,18 +21,24 @@
 	define('APPLICATION_ROOT', realpath(dirname(__FILE__)));
 
 	//
-	// Set up our pseudo $_SERVER parameters
+	// Set up our default pseudo $_SERVER parameters
 	//
-
-	$_SERVER['DOCUMENT_ROOT']   = '/';
+	$_SERVER['DOCUMENT_ROOT']   = dirname(__FILE__);
 	$_SERVER['REQUEST_URI']     = '/';
-	$_SERVER['REQUEST_METHOD']  = 'GET';
 	$_SERVER['REMOTE_ADDR']     = '127.0.0.1';
 	$_SERVER['SERVER_NAME']     = 'localhost';
 	$_SERVER['SERVER_PROTOCOL'] = 'HTTP/1.1';
+	$_SERVER['REQUEST_METHOD']  = 'GET';
 
 	//
-	// Bootstrap inKWell
+	// And these guys.
+	//
+
+	$_GET  = array();
+	$_POST = array();
+
+	//
+	// Bootstrap inKWell.  We buffer output to prevent buildConfig from being loud on CLI
 	//
 
 	ob_start();
@@ -50,20 +56,73 @@
 	fCore::enableErrorHandling('html');
 	fCore::enableExceptionHandling('html');
 
-	$___dbconf   = iw::getConfig('database');
-	$___database = ___use_db('default');
+	$___php = isset($_ENV['IW_PHP_CMD'])
+		? $_ENV['IW_PHP_CMD']
+		: 'php';
 
-	@exec('php -v', $___garbage, $___php);
+	@exec($___php . ' -v', $___garbage, $___error);
 
-	if ($___php !== 0) {
+	if ($___error) {
 		echo PHP_EOL;
 		echo 'Please add the PHP executable to your path.';
 		echo PHP_EOL;
 		exit();
 	}
 
+	$___shell_args = array();
+	$___settings   = array(
+		'short_open_tag'  => '0',
+		'asp_tags'        => '1',
+		'error_reporting' => 'E_PARSE'
+	);
+
+	foreach ($___settings as $___setting => $___value) {
+		$___shell_args[] = '-d ' . escapeshellarg($___setting . '=' . $___value);
+	}
+
+	$___php .= implode(' ', $___shell_args);
+
+	if (isset($argv[1]) && trim($argv[1])) {
+		if (is_file($argv[1]) && is_readable($argv[1])) {
+			try {
+				include $argv[1];
+				exit(0);
+			} catch (Exception $e) {
+				echo 'Exception: ' . $e->getMessage();
+				exit(1);
+			}
+		} else {
+			$___request = explode('::', $argv[1], 2);
+
+			if (count($___request) == 2) {
+				$_GET['_method']        = $___request[0];
+				$_SERVER['REQUEST_URI'] = $___request[1];
+			} else {
+				$_SERVER['REQUEST_URI'] = $___request[0];
+			}
+
+			if (isset($argv[2])) {
+				$_SERVER['HTTP_ACCEPT'] = $argv[2];
+			} else {
+				$_SERVER['HTTP_ACCEPT'] = '*/*';
+			}
+
+			require implode(iw::DS, array(
+				APPLICATION_ROOT,
+				'includes',
+				'routing.php'
+			));
+
+			Response::resolve(Moor::run())->send();
+
+			exit(0);
+		}
+	}
+
 	register_shutdown_function('___respawn');
 
+	$___dbconf    = iw::getConfig('database');
+	$___database  = ___use_db('default');
 	$___stdin     = fopen('php://stdin', 'r');
 	$___stat      = fstat($___stdin);
 	$___depth     = 0;
@@ -77,23 +136,6 @@
 		$___called_quit = TRUE;
 		$___code        = NULL;
 	}
-
-	if (isset($argv[1]) && trim($argv[1])) {
-		$___called_quit = TRUE;
-
-		if (is_readable($argv[1])) {
-			try {
-				include $argv[1];
-				exit(0);
-			} catch (Exception $e) {
-				echo 'Exception: ' . $e->getMessage();
-				exit(1);
-			}
-		}
-
-		echo 'Error: Unable to execute ' . $argv[1];
-	}
-
 
 	if (!$___silent) {
 		echo PHP_EOL;
@@ -326,15 +368,15 @@
 	function ___verify($file)
 	{
 		if (fCore::checkOS('windows')) {
-			$syntax_check = trim(shell_exec(sprintf('php -d %s -l %s',
-				escapeshellarg('error_reporting=E_PARSE'),
+			$syntax_check = trim(shell_exec(sprintf(
+				$GLOBALS['___php'] . ' -l %s',
 				escapeshellarg($file)
 			)));
 		} else {
 			ob_start();
 
-			passthru(sprintf('php -d %s -l %s 2>&1',
-				escapeshellarg('error_reporting=E_PARSE'),
+			passthru(sprintf(
+				$GLOBALS['___php'] . ' -l %s 2>&1',
 				escapeshellarg($file)
 			), $return);
 

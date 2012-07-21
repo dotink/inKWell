@@ -19,7 +19,6 @@
 
 		'default_accept_types' => array(
 			'text/html',
-			'application/json',
-			'application/xml'
+			'application/json'
 		)
 	));

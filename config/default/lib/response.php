@@ -84,7 +84,7 @@
 
 			'not_acceptable' => array(
 				'code' => 406,
-				'body' => 'The requested resource is not available in the accepted parameters'
+				'body' => 'The requested resource is not available in the accepted format'
 			),
 
 			'service_unavailable' => array(

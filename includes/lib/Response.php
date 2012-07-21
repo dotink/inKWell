@@ -3,7 +3,7 @@
 	class Response implements inkwell
 	{
 		const DEFAULT_CACHE_DIRECTORY = '.response_cache';
-		const DEFAULT_RESPONSE = 'not_found';
+		const DEFAULT_RESPONSE        = 'not_found';
 
 		/**
 		 *
@@ -79,15 +79,21 @@
 					'code' => 200,
 					'body' => NULL
 				),
-
 				'no_content' => array(
 					'code' => 204,
 					'body' => NULL
 				),
-
 				'not_found' => array(
 					'code' => 404,
 					'body' => 'The requested resource could not be found'
+				),
+				'not_allowed' => array(
+					'code' => 405,
+					'body' => 'The requested resource does not support this method'
+				),
+				'not_acceptable' => array(
+					'code' => 406,
+					'body' => 'The requested resource is not available in the accepted format'
 				)
 			);
 
@@ -355,26 +361,28 @@
 			);
 
 			//
-			// We want to let any renderers work their magic before deciding anything.
-			//
-			if (count($this->renderHooks)) {
-				foreach ($this->renderHooks as $renderCallback) {
-					if (is_callable($renderCallback)) {
-						call_user_func($renderCallback, $this);
-					}
-				}
-			}
-
-			//
 			// If after all rendering, we still don't have a view, we will try to get a
 			// default body based on our configured responses.
 			//
 
-			if (!$this->view) {
+			if ($this->view === NULL) {
 				if (isset(self::$responses[$this->status]['body'])) {
-					$this->view   = fText::compose(self::$responses[$this->status]['body']);
+					$this->view = fText::compose(self::$responses[$this->status]['body']);
 				} else {
 					$this->status = 'no_content';
+					$this->view   = NULL;
+				}
+			}
+
+			//
+			// We want to let any renderers work their magic before deciding anything.
+			//
+
+			if ($this->view !== NULL && count($this->renderHooks)) {
+				foreach ($this->renderHooks as $renderCallback) {
+					if (is_callable($renderCallback)) {
+						call_user_func($renderCallback, $this);
+					}
 				}
 			}
 
