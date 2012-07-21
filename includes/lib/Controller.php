@@ -30,7 +30,16 @@
 		 * @access private
 		 * @var string
 		 */
-		static private $baseURL = NULL;
+		static private $baseURL = '';
+
+		/**
+		 * All configured base URLs and their options
+		 *
+		 * @static
+		 * @access private
+		 * @var array
+		 */
+		static private $baseURLs = array();
 
 		/**
 		 * The Content-Type to send on sendHeader()
@@ -42,31 +51,13 @@
 		static private $contentType = NULL;
 
 		/**
-		 * The path from which relative controllers are loaded
-		 *
-		 * @static
-		 * @access private
-		 * @var string|fDirectory
-		 */
-		static private $controllerRoot = NULL;
-
-		/**
 		 * An array of error handlers used with triggerError()
 		 *
 		 * @static
 		 * @access private
 		 * @var array
 		 */
-		static private $errors = array();
-
-		/**
-		 * The default error name.
-		 *
-		 * @static
-		 * @access private
-		 * @var string
-		 */
-		static private $defaultError = NULL;
+		static private $error_handlers = array();
 
 		/**
 		 * A list of default accept mime types
@@ -76,24 +67,6 @@
 		 * @var array
 		 */
 		static private $defaultAcceptTypes = array();
-
-		/**
-		 * An array of available site sections and related data
-		 *
-		 * @static
-		 * @access private
-		 * @var array
-		 */
-		static private $siteSections = array();
-
-		/**
-		 * Whether or not Content-Type headers were sent
-		 *
-		 * @static
-		 * @access private
-		 * @var boolean
-		 */
-		static private $typeHeadersSent = FALSE;
 
 		/**
 		 * Matches whether or not a given class name is a potential
@@ -124,92 +97,84 @@
 				return TRUE;
 			}
 
-			//
-			// Build our site sections
-			//
-			$controller_configs = iw::getConfigsByType('controller');
-			array_unshift($controller_configs, iw::getConfig('controller'));
-
-			foreach ($controller_configs as $controller_config) {
-				if (isset($controller_config['sections'])) {
-					if (is_array($controller_config['sections'])) {
-						self::$siteSections = array_merge(
-							self::$siteSections,
-							$controller_config['sections']
-						);
-					}
-				}
-			}
+			$controller_configs           = iw::getConfigsByType('Controller');
+			$controller_configs[$element] = $config;
 
 			//
-			// Redirect to https:// if required for the section
+			// Build a list of all base URLs
 			//
-			$section = self::getBaseURL();
 
-			$use_ssl = (isset(self::$siteSections[$section]['use_ssl']))
-				? self::$siteSections[$section]['use_ssl']
-				: self::DEFAULT_USE_SSL;
+			foreach ($controller_configs as $config) {
 
-			if ($use_ssl && empty($_SERVER['HTTPS'])) {
-				$domain     = fURL::getDomain();
-				$request    = fURL::getWithQueryString();
-				$ssl_domain = str_replace('http://', 'https://', $domain);
+				$base_url = isset($config['base_url'])
+					? rtrim($config['base_url'], '/')
+					: '';
 
-				self::redirect($ssl_domain . $request, NULL, 301);
-			}
-
-			//
-			// Configure our Controller Root
-			//
-			self::$controllerRoot = iw::getRoot($element, self::DEFAULT_CONTROLLER_ROOT);
-
-			//
-			// Configure default accept types
-			//
-			if (isset($config['default_accept_types'])) {
-				self::$defaultAcceptTypes = $config['default_accept_types'];
-			} else {
-				self::$defaultAcceptTypes = array(
-					'text/html',
-					'application/json',
-					'application/xml'
+				self::$baseURLs[$base_url] = array(
+					'use_ssl'        => FALSE,
+					'error_handlers' => array(),
+					'accept_types'   => array(
+						'text/html',
+						'application/json'
+					)
 				);
-			}
 
-			//
-			// Configure errors and error handlers
-			//
-			if (isset($config['errors']) && is_array($config['errors'])) {
-				foreach ($config['errors'] as $error => $info) {
-					if (!is_array($info)) {
-						throw new fProgrammerException (
-							'Error %s must be configured as an array.',
-							$error
-						);
-					}
+				$base_url_config = &self::$baseURL[$base_url];
 
-					$handler = isset($info['handler'])
-						? $handler = $info['handler']
-						: NULL;
+				//
+				// Configure whether or not we need to use SSL on this base URL
+				//
 
-					$header = isset($info['header'])
-						? $header = $info['header']
-						: NULL;
-
-					$message = isset($info['message'])
-						? $message = $info['message']
-						: NULL;
-
-
-					self::$errors[$error]['handler'] = $handler;
-					self::$errors[$error]['header']  = $header;
-					self::$errors[$error]['message'] = $message;
+				if (isset($config['use_ssl'])) {
+					self::$baseURLs[$base_url]['use_ssl'] = $config['use_ssl'];
 				}
 
-				self::$defaultError = isset($config['default_error'])
-					? $config['default_error']
-					: NULL;
+				//
+				// Figure out the current BaseURL
+				//
+
+				foreach (array_keys(self::$baseURLs) as $base_url) {
+					if (stripos(Moor::getRequestPath(), $base_url) === 0) {
+						if (strlen($base_url) > self::$baseURL) {
+							self::$baseURL = $base_url;
+						}
+					}
+				}
+
+				//
+				// See if we need to switch to SSL
+				//
+
+				if ($base_url_config['use_ssl'] && empty($_SERVER['HTTPS'])) {
+					$domain     = fURL::getDomain();
+					$request    = fURL::getWithQueryString();
+					$ssl_domain = str_replace('http://', 'https://', $domain);
+
+					self::redirect($ssl_domain . $request, NULL, 301);
+				}
+
+
+				//
+				// Configure default accept types
+				//
+
+				if (isset($config['accept_types'])) {
+					$base_url_config['accept_types'] = $config['accept_types'];
+				}
+
+				//
+				// Configure error handlers
+				//
+
+				if (isset($config['error_handlers']) && is_array($config['error_handlers'])) {
+					$base_url_config['error_handlers'] = array_merge(
+						$base_url_config['error_handlers'],
+						$config['error_handlers']
+					);
+				}
 			}
+
+
 		}
 
 		/**
@@ -233,36 +198,6 @@
 		}
 
 		/**
-		 * Triggers the default error and returns the view
-		 *
-		 * This is the last ditch attempt to retrieve an error view / response by the
-		 * Controller system.  Although this method is public it should not be used
-		 * directly.
-		 *
-		 * @static
-		 * @access public
-		 * @param void
-		 * @return View The default attached view after running the default error
-		 */
-		static public function __error()
-		{
-			try {
-
-				//
-				// Trigger our default error so it attaches its view.
-				//
-				self::triggerError();
-
-			} catch (MoorContinueException $e) {
-				//
-				// Purposefully catch the error.
-				//
-			}
-
-			return View::retrieve();
-		}
-
-		/**
 		 * Determines whether or not we should accept the request based on the mime type accepted
 		 * by the user agent.  If no array or an empty array is passed the configured default
 		 * accept types will be used.  If the request::format is provided in the request and the
@@ -283,7 +218,7 @@
 			}
 
 			if (!count($accept_types)) {
-				$accept_types = self::$defaultAcceptTypes;
+				$accept_types = self::$baseURLs[self::getBaseURL()]['accept_types'];
 			}
 
 			//
@@ -360,12 +295,20 @@
 		 *
 		 * @static
 		 * @access protected
-		 * @param array $language An array of acceptable languages
+		 * @param array $accept_language An array of acceptable languages
 		 * @return mixed The he best acceptable language upon success.
 		 */
-		static protected function acceptLanguages(array $languages)
+		static protected function acceptLanguages($accept_languages = array())
 		{
-			return ($best_language = Request::getBestAcceptType($languages))
+			if (!is_array($accept_languages)) {
+				$accept_languages = func_get_args();
+			}
+
+			if (!count($accept_languages)) {
+				$accept_languages = self::$baseURLs[self::getBaseURL()]['accept_languages'];
+			}
+
+			return ($best_language = Request::getBestAcceptType($accept_languages))
 				? $best_language
 				: self::triggerError('not_acceptable');
 		}
@@ -382,10 +325,10 @@
 		 */
 		static protected function allowMethods(array $methods = array())
 		{
-			$request_method  = strtoupper($_SERVER['REQUEST_METHOD']);
-			$allowed_methods = array_map('strtoupper', $methods);
+			$request_method  = strtolower($_SERVER['REQUEST_METHOD']);
+			$allowed_methods = array_map('strtolower', $methods);
 
-			if ($request_method == 'POST' && Request::check(Request::REQUEST_METHOD_PARAM)) {
+			if ($request_method == 'post' && Request::check(Request::REQUEST_METHOD_PARAM)) {
 				$request_method = Request::get(Request::REQUEST_METHOD_PARAM, 'string', NULL);
 			}
 
@@ -409,26 +352,6 @@
 		 */
 		static protected function getBaseURL()
 		{
-			if (self::$baseURL == NULL) {
-				self::$baseURL  = self::DEFAULT_SITE_SECTION;
-				$request_info   = parse_url(Moor::getRequestPath());
-				$request_path   = ltrim($request_info['path'], '/');
-				$request_parts  = explode('/', $request_path);
-				$site_sections  = array_keys(self::$siteSections);
-
-				//
-				// If the request meets these conditions it will overwrite the
-				// base URL.
-				//
-				$has_base_url   = (in_array($request_parts[0], $site_sections));
-				$is_not_default = ($request_parts[0] != self::$baseURL);
-				$is_sub_request = (count($request_parts) > 1);
-
-				if ($has_base_url && $is_not_default && $is_sub_request) {
-					self::$baseURL = array_shift($request_parts);
-				}
-			}
-
 			return self::$baseURL;
 		}
 
@@ -442,7 +365,7 @@
 		 */
 		static protected function checkBaseURL($base_url)
 		{
-			return (self::getBaseURL() == $base_url);
+			return (self::getBaseURL() == (!$base_url ? '' : $base_url));
 		}
 
 		/**
@@ -574,45 +497,11 @@
 				}
 			}
 
-			if ($target === NULL) {
-				fURL::redirect();
-			}
+			$target = $target !== NULL
+ 				? iw::makeLink($target, $query, $hash, FALSE)
+ 				: NULL;
 
-			fURL::redirect(iw::makeLink($target, $query, $hash, FALSE));
-		}
-
-		/**
-		 * Sends the appropriate headers.  Headers will be determined by the use of the
-		 * acceptTypes() method.  If it has not been run prior to this method, it will be run
-		 * with configured default accept types.
-		 *
-		 * @static
-		 * @access protected
-		 * @param array $headers Additional headers aside from content type to send
-		 * @param boolean $send_content_type Whether or not we should send the content type header
-		 * @return void
-		 */
-		static protected function sendHeader($headers = array(), $send_content_type = TRUE)
-		{
-			if (!self::$typeHeadersSent && $send_content_type) {
-
-				if (!self::$contentType) {
-
-					//
-					// If the contentType is not set then acceptTypes was never called.
-					// we can call it now with the default accept types which will set
-					// both the request format and the contentType.
-					//
-					self::acceptTypes();
-				}
-
-				header('Content-Type: ' . self::$contentType);
-				self::$typeHeadersSent = TRUE;
-			}
-
-			foreach ($headers as $header => $value) {
-				header($header . ': ' . $value);
-			}
+			fURL::redirect($target);
 		}
 
 		/**
@@ -632,83 +521,32 @@
 		 * @static
 		 * @access protected
 		 * @param string $error The error to be triggered
+		 * @param string $headers Additional headers to add
+		 * @param string $message The message sent
 		 * @param boolean|array $headers Whether to and, optionally, which headers to set
 		 * @param string $message The message to be displayed
 		 * @throws MoorContinueException
 		 * @return void
 		 */
-		static protected function triggerError($error = NULL, $headers = TRUE, $message = NULL)
+		static protected function triggerError($error, $headers = array(), $message = NULL)
 		{
+			$handler = NULL;
 
-			$error = ($error === NULL)
-				? self::$defaultError
-				: $error;
-
-			$error_info = array(
-				'handler' => NULL,
-				'header'  => $_SERVER['SERVER_PROTOCOL'] . ' 500 Internal Server Error',
-				'message' => ($message)
-					? fText::compose($message)
-					: fText::compose('An Unknown error occurred.')
-			);
-
-			if (isset(self::$errors[$error])) {
-				if (isset(self::$errors[$error]['handler'])) {
-					$error_info['handler'] = self::$errors[$error]['handler'];
-				}
-
-				if (isset(self::$errors[$error]['header'])) {
-					$error_info['header'] = self::$errors[$error]['header'];
-				}
-
-				if (isset(self::$errors[$error]['message']) && !$message) {
-					$error_info['message'] = self::$errors[$error]['message'];
-				}
+			if (isset(self::$baseURLs[iw::getBaseURL()]['error_handlers'][$error])) {
+				$handler = self::$baseURLs[iw::getBaseURL()]['error_handlers'][$error];
+			} elseif (isset(self::$baseURLs['']['error_handlers'][$error])) {
+				$handler = self::$baseURLs['']['error_handlers'][$error];
 			}
 
-			if ($error_info['handler']) {
-				$view = self::exec($error_info['handler'], $error_info['message']);
-			} else {
-				$view = View::create(NULL, array(
-					'id'      => $error,
-					'classes' => array(self::MSG_TYPE_ERROR),
-					'title'   => fGrammar::humanize($error),
-					'error'   => $error_info['message']
-				));
-
-				$accept_types = Request::getFormat()
-					? Request::getFormatTypes(Request::getFormat())
-					: array();
-
-				switch (Request::getBestAcceptType($accept_types)) {
-					case 'text/html':
-						$view = $view->load('html.php');
-						break;
-					case 'application/json':
-						$view = fJSON::encode($view);
-						break;
-					case 'application/xml':
-						$view = fXML::encode($view);
-						break;
-					default:
-						$view = $error_info['message'];
-						break;
-				}
+			if (is_callable($handler)) {
+				$message = call_user_func($error, $headers, $message);
 			}
 
-			if ($headers) {
-				@header($error_info['header']);
+			$response = new Response($error, self::acceptTypes(), $headers, $message);
 
-				if (is_array($headers)) {
-					foreach ($headers as $header) {
-						@header($header);
-					}
-				}
-			}
+			Response::register($response);
 
-			View::attach($view);
-
-			self::yield($error_info['header']);
+			self::yield();
 		}
 
 		/**

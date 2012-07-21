@@ -65,39 +65,11 @@
 		include $include_directory . DIRECTORY_SEPARATOR . 'routing.php';
 
 		//
-		// Try try try to get some sort of view data.
+		// Resolve and send our response
 		//
 
-		$data = NULL;
-		$data = ($data !== NULL) ? $data : Moor::run();
-		$data = ($data !== NULL) ? $data : View::retrieve();
-		$data = ($data !== NULL) ? $data : Controller::__error();
-
-		//
-		// Handle outputting of non-object data
-		//
-
-		if (!is_object($data)) {
-			echo $data;
-			exit(1);
-		}
-
-		//
-		// Output different objects differently
-		//
-
-		switch(strtolower(get_class($data))) {
-			case 'view':
-				$data->render();
-				exit(1);
-			case 'ffile':
-			case 'fimage':
-				$data->output(FALSE);
-				exit(1);
-			default:
-				echo serialize($data);
-				exit(1);
-		}
+		Response::resolve(Moor::run())->send();
+		exit(1);
 
 	} catch (Exception $e) {
 

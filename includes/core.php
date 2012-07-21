@@ -503,6 +503,12 @@
 				$write_directory = self::$writeDirectory;
 			}
 
+			if (!is_dir($write_directory) && class_exists('fDirectory', FALSE)) {
+				try {
+					fDirectory::create($write_directory);
+				} catch (fValidationException $e) {}
+			}
+
 			return rtrim($write_directory, '/\\' . iw::DS);
 		}
 
