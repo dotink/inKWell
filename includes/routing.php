@@ -49,10 +49,13 @@
 	}
 
 	//
-	// Set Moor's not found callback to NULL so it doesn't handle not founds
+	// Set Moor's not found callback.  This what is called when we run out of routes.  Since
+	// our controller handles additional and custom not found callbacks per base URL, etc, with
+	// triggerError(), we're going to keep this on Controller::notFound() which handles this
+	// appropriately.
 	//
 
-	Moor::setNotFoundCallback(NULL);
+	Moor::setNotFoundCallback('Controller::notFound');
 
 	//
 	//

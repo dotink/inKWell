@@ -29,12 +29,7 @@
 				// Both the type and name are required and should be a string value.
 
 				'type' => 'sqlite',
-				'name' => APPLICATION_ROOT . implode(iw::DS, array(
-					'external',
-					'testing',
-					'databases',
-					'simple'
-				)),
+				'name' => APPLICATION_ROOT . '/external/testing/databases/simple',
 
 				// Authentication information if required
 

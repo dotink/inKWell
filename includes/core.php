@@ -465,16 +465,18 @@
 			$directory = NULL;
 
 			if ($element && isset(self::$roots[$element])) {
-				$directory = preg_match(iw::REGEX_ABSOLUTE_PATH, self::$roots[$element])
-					? self::$roots[$element]
-					: APPLICATION_ROOT . iw::DS . self::$roots[$element];
+				$directory =  str_replace('/', iw::DS, self::$roots[$element]);
+				$directory = !preg_match(iw::REGEX_ABSOLUTE_PATH, self::$roots[$element])
+					? APPLICATION_ROOT . iw::DS . $directory
+					: $directory;
 			}
 
 			if (!$directory) {
 				if ($default) {
-					$directory = preg_match(iw::REGEX_ABSOLUTE_PATH, $default)
-						? $default
-						: APPLICATION_ROOT . iw::DS . $default;
+					$directory =  str_replace('/', iw::DS, $default);
+					$directory = !preg_match(iw::REGEX_ABSOLUTE_PATH, $directory)
+						? APPLICATION_ROOT . iw::DS . $directory
+						: $directory;
 				} else {
 					$directory = APPLICATION_ROOT;
 				}
@@ -496,9 +498,10 @@
 		static public function getWriteDirectory($sub_directory = NULL)
 		{
 			if ($sub_directory) {
-				$write_directory = preg_match(iw::REGEX_ABSOLUTE_PATH, $sub_directory)
-					? $sub_directory
-					: self::getWriteDirectory() . iw::DS . $sub_directory;
+				$sub_directory   = str_replace('/', iw::DS, $sub_directory);
+				$write_directory = !preg_match(iw::REGEX_ABSOLUTE_PATH, $sub_directory)
+					? self::getWriteDirectory() . iw::DS . $sub_directory
+					: $sub_directory;
 			} else {
 				$write_directory = self::$writeDirectory;
 			}
@@ -536,8 +539,16 @@
 				));
 
 
-			if (is_readable($config_cache) && is_file($config_cache)) {
+			if (is_file($config_cache) && is_readable($config_cache)) {
 				self::$config = @unserialize(file_get_contents($config_cache));
+			}
+
+			if (iw::checkSAPI('cli-server') && isset($_GET['__test'])) {
+				$config = APPLICATION_ROOT . iw::DS . implode(iw::DS, array(
+					'external',
+					'testing',
+					'config'
+				));
 			}
 
 			if (!self::$config) {
@@ -549,14 +560,14 @@
 			//
 
 			$write_directory = isset(self::$config['inkwell']['write_directory'])
-				? self::$config['inkwell']['write_directory']
-				: self::DEFAULT_WRITE_DIRECTORY;
+				? str_replace('/', iw::DS, self::$config['inkwell']['write_directory'])
+				: str_replace('/', iw::DS, self::DEFAULT_WRITE_DIRECTORY);
 
 			if (!preg_match(iw::REGEX_ABSOLUTE_PATH, $write_directory)) {
-				$write_directory = self::getRoot(NULL, $write_directory);
+				self::$writeDirectory = self::getRoot(NULL, $write_directory);
+			} else {
+				self::$writeDirectory = $write_directory;
 			}
-
-			self::$writeDirectory = $write_directory;
 
 			//
 			// Configure our autoloaders
@@ -766,18 +777,22 @@
 
 					if (is_array($database_hosts) && count($database_hosts)) {
 
-						$target      = self::makeTarget(__CLASS__, 'database_host['. $name . ']');
-						$stored_host = fSession::get($target, NULL);
+						$target = self::makeTarget(__CLASS__, 'database_host['. $name . ']');
 
-						if (!$stored_host || !in_array($stored_host, $database_hosts)) {
-							$host_index    = array_rand($database_hosts);
-							$database_host = $database_hosts[$host_index];
-
-							fSession::set($target, $database_host);
+						if (!session_id()) {
+							$database_host = end($database_hosts);
 						} else {
-							$database_host = $stored_host;
-						}
+							$stored_host = fSession::get($target, NULL);
 
+							if (!$stored_host || !in_array($stored_host, $database_hosts)) {
+								$host_index    = array_rand($database_hosts);
+								$database_host = $database_hosts[$host_index];
+
+								fSession::set($target, $database_host);
+							} else {
+								$database_host = $stored_host;
+							}
+						}
 					}
 
 					if (strpos($database_host, 'sock:') !== 0) {

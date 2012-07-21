@@ -202,6 +202,26 @@
 		}
 
 		/**
+		 * A routable not found view.
+		 *
+		 * This will simply trigger the standard not found error, however, it catches the
+		 * exception thrown by yield.
+		 *
+		 * @static
+		 * @access public
+		 * @param void
+		 * @return void
+		 */
+		static public function notFound()
+		{
+			try {
+				self::triggerError('not_found');
+			} catch (MoorContinueException $e) {}
+
+			return NULL;
+		}
+
+		/**
 		 * Determines whether or not we should accept the request based on the mime type accepted
 		 * by the user agent.  If no array or an empty array is passed the configured default
 		 * accept types will be used.  If the request::format is provided in the request and the
@@ -525,11 +545,9 @@
 		 * @static
 		 * @access protected
 		 * @param string $error The error to be triggered
-		 * @param string $headers Additional headers to add
+		 * @param array  $headers Additional headers to add
 		 * @param string $message The message sent
-		 * @param boolean|array $headers Whether to and, optionally, which headers to set
-		 * @param string $message The message to be displayed
-		 * @throws MoorContinueException
+		 * @throws MoorContinueException (by proxy)
 		 * @return void
 		 */
 		static protected function triggerError($error, $headers = array(), $message = NULL)
@@ -555,7 +573,7 @@
 			if (is_callable($handler)) {
 				Response::register(call_user_func($handler, $error, $headers, $message));
 			} else {
-				Response::register($message);
+				Response::register(new Response($error, self::acceptTypes(), $headers, $message));
 			}
 
 			self::yield();

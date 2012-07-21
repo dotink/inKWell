@@ -86,44 +86,47 @@
 
 		public function iwBuildConfig()
 		{
-			\Enhance\Assert::isTrue(is_array(iw::buildConfig()));
+			\Enhance\Assert::isTrue(
+				is_array(iw::buildConfig())
+			);
 		}
 
 
 		public function iwBuildMergedConfig()
 		{
-			$config = iw::buildConfig(implode(iw::DS, array(
-				TEST_ROOT,
-				'config'
-			)));
+			$config = iw::buildConfig($this->testConfigDir);
 
-			\Enhance\Assert::isTrue(is_array($config));
+			\Enhance\Assert::isTrue(
+				is_array($config)
+			);
 		}
 
 		public function iwBuildMergedConfigAndVerifyValue()
 		{
-			$config = iw::buildConfig(implode(iw::DS, array(
-				TEST_ROOT,
-				'config'
-			)));
+			$config = iw::buildConfig($this->testConfigDir);
 
-			\Enhance\Assert::areIdentical('foo', $config['test_element']['test_value']);
+			\Enhance\Assert::areIdentical(
+				'foo',
+				$config['test_element']['test_value']
+			);
 		}
 
 
 		public function iwBuildMergedConfigAndVerifyOverloadedValue()
 		{
-			$config = iw::buildConfig(implode(iw::DS, array(
-				TEST_ROOT,
-				'config'
-			)));
+			$config = iw::buildConfig($this->testConfigDir);
 
-			\Enhance\Assert::areIdentical('testing', $config['inkwell']['execution_mode']);
+			\Enhance\Assert::areIdentical(
+				'America/New_York',
+				$config['inkwell']['default_timezone']
+			);
 		}
 
 		public function iwInit()
 		{
-			\Enhance\Assert::isTrue(is_array(iw::init()));
+			\Enhance\Assert::isTrue(
+				is_array(iw::init())
+			);
 		}
 
 		public function iwInitFromDirectory()
@@ -170,7 +173,7 @@
 					'databases' => array(
 						'default::both' => array(
 							'type' => 'sqlite',
-							'name' => APPLICATION_ROOT . implode(iw::DS, array(
+							'name' => APPLICATION_ROOT . iw::DS . implode(iw::DS, array(
 								'external',
 								'testing',
 								'databases',
@@ -207,8 +210,8 @@
 			iw::init($this->testConfigDir);
 
 			\Enhance\Assert::areIdentical(
-				'testing',
-				iw::getConfig('inkwell', 'execution_mode')
+				'America/New_York',
+				iw::getConfig('inkwell', 'default_timezone')
 			);
 		}
 
@@ -288,7 +291,9 @@
 			iw::init();
 
 			\Enhance\Assert::areIdentical(
-				'http://www.google.com?q=inkwell%20framework',
+				fCore::checkVersion('5.4')
+					? 'http://www.google.com?q=inkwell%20framework'
+					: 'http://www.google.com?q=inkwell+framework',
 				iw::makeLink('http://www.google.com', array(
 					'q' => 'inkwell framework'
 				))
@@ -300,7 +305,9 @@
 			iw::init();
 
 			\Enhance\Assert::areIdentical(
-				'http://www.google.com?q=inkwell%20framework#bottom',
+				fCore::checkVersion('5.4')
+					? 'http://www.google.com?q=inkwell%20framework#bottom'
+					: 'http://www.google.com?q=inkwell+framework#bottom',
 				iw::makeLink('http://www.google.com', array(
 					'q' => 'inkwell framework'
 				), 'bottom')

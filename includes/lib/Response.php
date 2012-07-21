@@ -13,11 +13,6 @@
 		/**
 		 *
 		 */
-		static private $defaultResponse = NULL;
-
-		/**
-		 *
-		 */
 		static private $response  = NULL;
 
 		/**
@@ -33,17 +28,7 @@
 		/**
 		 *
 		 */
-		private $code = NULL;
-
-		/**
-		 *
-		 */
-		private $headers = array();
-
-		/**
-		 *
-		 */
-		private $renderer = NULL;
+		protected $view = NULL;
 
 		/**
 		 *
@@ -53,12 +38,24 @@
 		/**
 		 *
 		 */
+		private $code = NULL;
+
+		/**
+		 *
+		 */
 		private $type = NULL;
 
 		/**
 		 *
 		 */
-		private $view = NULL;
+		private $headers = array();
+
+		/**
+		 *
+		 */
+		private $renderHooks = array();
+
+
 
 		/**
 		 * Initialize the class
@@ -77,13 +74,26 @@
 				? iw::getWriteDirectory($config['cache_directory'])
 				: iw::getWriteDirectory(self::DEFAULT_CACHE_DIRECTORY);
 
-			self::$responses = isset($config['responses'])
-				? $config['responses']
-				: array();
+			$required_responses = array(
+				'ok' => array(
+					'code' => 200,
+					'body' => NULL
+				),
 
-			self::$defaultResponse = isset($config['default'])
-				? $config['default']
-				: self::DEFAULT_RESPONSE;
+				'no_content' => array(
+					'code' => 204,
+					'body' => NULL
+				),
+
+				'not_found' => array(
+					'code' => 404,
+					'body' => 'The requested resource could not be found'
+				)
+			);
+
+			self::$responses = isset($config['responses'])
+				? array_merge($required_responses, $config['responses'])
+				: $required_responses;
 
 			foreach (iw::getConfigsByType('Response') as $config) {
 				if (isset($config['renderers'])) {
@@ -112,53 +122,31 @@
 		 * is, if you actually pass it data, that you are looking to return "ok".  It will use the
 		 * cache system to make attempts to determine the mime type and cache it for future use.
 		 *
+		 * @static
+		 * @access public
+		 * @param mixed $content The content to resolve to a response
+		 * @return Response
 		 */
 		static public function resolve($content = NULL)
 		{
 			if ($content === NULL && self::$response) {
-				return self::resolve(self::$response);
+				$content = self::resolve(self::$response);
+
+			} elseif (!($content instanceof self)) {
+
+				//
+				// Previous versions of inKWell may have responded with objects such as View or
+				// fImage.  The short answer here is that if we receive content to resolve, we
+				// are going to assume that they want an OK, as controller::triggerError() was
+				// still promoted.  If that is the case, we can create a response object
+				// directly and use the content as we see fit.  The send() method will take care
+				// of how to output it.
+				//
+
+				$content = new self('ok', NULL, array(), $content);
 			}
 
-			if (!is_object($content)) {
-				if ($content === NULL) {
-					$response = self::$defaultResponse;
-					$content  = isset(self::$responses[self::$defaultResponse]['body'])
-						? self::$responses[self::$defaultResponse]['body']
-						: NULL;
-
-				} else {
-					$response = 'ok';
-				}
-
-				//
-				// Sometimes our content is just a string or a number or whatever.  We attempt
-				// to cache the response and then create a new one based on its mime type.
-				//
-
-				$cache_file = self::cache(NULL, $content);
-
-				return new self($response, $cache_file->getMimeType(), array(), $content);
-
-			} elseif ($content instanceof self) {
-
-				//
-				// If our content is already a response our job is easy
-				//
-
-				return $content;
-
-			}
-
-			//
-			// Previous versions of inKWell may have responded with objects such as View or
-			// fImage.  The short answer here is that if we receive content to resolve, we
-			// are going to assume that they want an OK, as controller::triggerError() was
-			// still promoted.  If that is the case, we can create a response object
-			// directly and use the content as we see fit.  The send() method will take care
-			// of how to output it.
-			//
-
-			return new self('ok', NULL, array(), $content);
+			return $content;
 		}
 
 		/**
@@ -169,6 +157,8 @@
 		 * than 2 minutes, this function will return.  Otherwise, the cache file is sent and
 		 * the script exits.
 		 *
+		 * @static
+		 * @access public
 		 * @param string $type The mime type for the cached response
 		 * @param string $max_age The time in seconds when the cache shouldn't be used, default 120
 		 * @param string $entropy_data A string to calculate entropy from, default NULL
@@ -180,24 +170,63 @@
 		}
 
 		/**
-		 * Renders a view (proper or not) to json
+		 * Our default and global rendering callback.
 		 *
-		 * @param mixed $view The data to attempt to render to JSON
-		 * @return string A valid JSON string
-		 * @throws fProgrammerException if the response code is undefined
+		 * @static
+		 * @access protected
+		 * @param Response $response The response to render
+		 * @return void
+		 */
+		static protected function renderAny($response)
+		{
+			if (is_object($response->view)) {
+				switch (strtolower(get_class($response->view))) {
+					case 'view':
+						$response->view = $response->view->make();
+						break;
+					case 'fimage':
+					case 'ffile':
+						$response->view = $response->view->read();
+						break;
+				}
+			}
+		}
+
+		/**
+		 * Renders a view (proper or not) to JSON
+		 *
+		 * @static
+		 * @access protected
+		 * @param Response $response The response to render
+		 * @return void
 		 */
 		static protected function renderJSON($response)
 		{
-			if (is_string($view) && fJSON::decode($view) !== NULL) {
-				return $view;
+			if (is_string($response->view) && fJSON::decode($response->view) !== NULL) {
+				return;
 			}
 
-			return fJSON::encode($view);
+			$response->view = fJSON::encode($response->view);
+		}
+
+		/**
+		 * Renders a view (proper or not) to PHP
+		 *
+		 * @static
+		 * @access protected
+		 * @param Response $response The response to render
+		 * @return void
+		 */
+		static protected function renderPHP($response)
+		{
+			$this->view = serialize($response->view);
 		}
 
 		/**
 		 * Resolves a response short name into the appropriate code
 		 *
+		 * @static
+		 * @access protected
 		 * @param string $response The response name, ex: 'ok' or 'not_found'
 		 * @return int The response code
 		 * @throws fProgrammerException if the response code is undefined or non-numeric
@@ -223,6 +252,8 @@
 		/**
 		 * Caches a file for the current unique URL using the data type as part of its id.
 		 *
+		 * @static
+		 * @access private
 		 * @param string $data_type The data type for the request to match the cache
 		 * @param string $data The data to cache
 		 */
@@ -251,6 +282,7 @@
 		/**
 		 * Create a new response object
 		 *
+		 * @access public
 		 * @param string $status The status string, ex: 'ok', 'not_found', ...
 		 * @param string $type The mimetype to send as
 		 * @param array $headers Additional headers to output
@@ -259,12 +291,19 @@
 		 */
 		public function __construct($status, $type = NULL, $headers = array(), $view = NULL)
 		{
-			$this->status   = $status;
-			$this->code     = self::translateCode($status);
-			$this->type     = strtolower($type);
-			$this->renderer = isset(self::$renderers[$type])
-				? self::$renderers[$type]
-				: NULL;
+			$this->status = $status;
+			$this->code   = self::translateCode($status);
+			$this->type   = strtolower($type);
+
+			if (isset(self::$renderers['*'])) {
+				$this->renderHooks[] = self::$renderers['*'];
+			}
+
+			foreach ($this->renderHooks as $type_match => $callback) {
+				if (preg_match('#' . $type_match . '#', $this->type)) {
+					$this->renderHooks[] = $callback;
+				}
+			}
 
 			if (func_num_args() > 3) {
 				$this->headers = func_get_arg(2);
@@ -278,6 +317,7 @@
 		/**
 		 * Set an individual header on the response
 		 *
+		 * @access public
 		 * @param string $header The header to set
 		 * @param string $value The value for it
 		 * @return Response The response object for chaining
@@ -291,6 +331,9 @@
 		/**
 		 * Sends the response to the screen
 		 *
+		 * @access public
+		 * @param void
+		 * @return void
 		 */
 		public function send()
 		{
@@ -300,14 +343,44 @@
 				'1.1' => array( /* CURRENT VERSION OF HTTP SO WE SHOULD BE GOOD */ )
 			);
 
-			$response = ucwords(fGrammar::humanize($this->status));
-			$status   = isset($aliases[$version][$this->code])
+			//
+			// We want to let any renderers work their magic before deciding anything.
+			//
+			if (count($this->renderHooks)) {
+				foreach ($this->renderHooks as $callback) {
+					if (is_callable($this->renderHooks)) {
+						call_user_func($callback, $this);
+					}
+				}
+			}
+
+			//
+			// If after all rendering, we still don't have a view, we will try to get a
+			// default body based on our configured responses.
+			//
+
+			if (!$this->view) {
+				if (isset(self::$responses[$this->status]['body'])) {
+					$this->view   = fText::compose(self::$responses[$this->status]['body']);
+				} else {
+					$this->status = 'no_content';
+				}
+			}
+
+			$this->view   = (string) $this->view;
+			$this->status = ucwords(fGrammar::humanize($this->status));
+			$this->code   = isset($aliases[$version][$this->code])
 				? $aliases[$version][$this->code]
 				: $this->code;
 
-			$content  = is_callable($this->renderer)
-				? call_user_func($this->renderer, $this->view, $this)
-				: $this->view;
+			//
+			// If we don't have a type set we will try to determine the type by caching
+			// our view as a file and getting it's mimeType.
+			//
+
+			if (!$this->type) {
+				$this->type = self::cache(NULL, $this->view)->getMimeType();
+			}
 
 			//
 			// Output all of our headers.
@@ -318,40 +391,23 @@
 			//
 
 			header(!iw::checkSAPI('cgi-fcgi')
-				? sprintf('%s %d %s', $_SERVER['SERVER_PROTOCOL'], $status, $response)
-				: sprintf('Status: %d %s', $status, $response)
+				? sprintf('%s %d %s', $_SERVER['SERVER_PROTOCOL'], $this->code, $this->status)
+				: sprintf('Status: %d %s', $this->code, $this->status)
 			);
 
-			header(sprintf('Content-Type: %s', $this->type));
+			if ($this->code != 204) {
+				header(sprintf('Content-Type: %s', $this->type));
+			}
 
 			foreach ($this->headers as $header => $value) {
 				header($header . ': ' . $value);
 			}
 
 			//
-			// Older versions of inKWell used to do something like this in the index file.
-			// Basically, we want to determine if our final content is an object of some sorts
-			// and call different methods depending.
+			// Last, but not least, echo our view.
 			//
 
-			if (is_object($content)) {
-				switch (strtolower(get_class($content))) {
-					case 'view':
-						$content->render();
-						exit(1);
-					case 'fimage':
-					case 'ffile':
-						$content->output();
-						exit(1);
-				}
-			}
-
-			//
-			// Last, but not least, if our content appears to be just some normal variable,
-			// echo it.
-			//
-
-			echo $content;
+			echo $this->view;
 			exit(1);
 		}
 	}
