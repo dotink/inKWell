@@ -302,7 +302,9 @@
 		{
 			$this->status = $status;
 			$this->code   = self::translateCode($status);
-			$this->type   = strtolower($type);
+			$this->type   = ($type)
+				? strtolower($type)
+				: NULL;
 
 			if (isset(self::$renderers['*'])) {
 				$this->renderHooks[] = self::$renderers['*'];
