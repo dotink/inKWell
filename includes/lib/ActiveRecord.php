@@ -410,15 +410,15 @@
 			}
 
 			foreach ($schema->getKeys($table, 'primary') as $column) {
-
 				$method = 'get' . fGrammar::camelize($column, TRUE);
+
 				self::$info[$record_class]['pkey_columns'][] = $column;
 				self::$info[$record_class]['pkey_methods'][] = $method;
 			}
 
 			foreach ($schema->getKeys($table, 'foreign') as $fkey_info) {
-
 				$column = $fkey_info['column'];
+
 				self::$info[$record_class]['fkey_columns'][] = $column;
 			}
 
