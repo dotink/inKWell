@@ -94,17 +94,25 @@
 		} else {
 			$___request = explode('::', $argv[1], 2);
 
+			$_SERVER['REQUEST_URI'] = $___request[0];
+
 			if (count($___request) == 2) {
-				$_GET['_method']        = $___request[0];
-				$_SERVER['REQUEST_URI'] = $___request[1];
-			} else {
-				$_SERVER['REQUEST_URI'] = $___request[0];
+				$_SERVER['REQUEST_METHOD'] = strtoupper($___request[0]);
+				$_SERVER['REQUEST_URI']    = $___request[1];
 			}
 
 			if (isset($argv[2])) {
 				$_SERVER['HTTP_ACCEPT'] = $argv[2];
 			} else {
 				$_SERVER['HTTP_ACCEPT'] = '*/*';
+			}
+
+			if (isset($argv[3])) {
+				if ($_SERVER['REQUEST_METHOD'] == 'GET') {
+					$_GET  = fJSON::decode($argv[3], TRUE);
+				} else {
+					$_POST = fJSON::decode($argv[3], TRUE);
+				}
 			}
 
 			require implode(iw::DS, array(
