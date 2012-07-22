@@ -115,14 +115,37 @@
 		}
 
 		/**
+		 * Clear the registered response and return it.
+		 *
+		 * @static
+		 * @access public
+		 * @param void
+		 * @return Response The previously registered response
+		 */
+		static public function clear()
+		{
+			$registered_response  = self::$response;
+			self::$response       = NULL;
+
+			return $registered_response;
+		}
+
+		/**
 		 * Register a response to be resolved later.
 		 *
 		 * This will register a response (object or otherwise) which can be resolved by passing
 		 * NULL to the Response::resolve() method.
+		 *
+		 * @static
+		 * @access public
+		 * @param void
+		 * @return Response The previously registered response
 		 */
 		static public function register($response)
 		{
-			self::$response = $response;
+			if (!self::$response) {
+				self::$response = $response;
+			}
 		}
 
 		/**
@@ -306,9 +329,9 @@
 		 */
 		public function __construct($status, $type = NULL, $headers = array(), $view = NULL)
 		{
-			$this->status = $status;
-			$this->code   = self::translateCode($status);
-			$this->type   = ($type)
+			$this->status   = $status;
+			$this->code     = self::translateCode($status);
+			$this->type     = ($type)
 				? strtolower($type)
 				: NULL;
 
@@ -360,17 +383,23 @@
 				'1.1' => array( /* CURRENT VERSION OF HTTP SO WE SHOULD BE GOOD */ )
 			);
 
+			$response = isset(self::$response)
+				? self::$response
+				: $this;
+
 			//
 			// If after all rendering, we still don't have a view, we will try to get a
 			// default body based on our configured responses.
 			//
 
-			if ($this->view === NULL) {
-				if (isset(self::$responses[$this->status]['body'])) {
-					$this->view = fText::compose(self::$responses[$this->status]['body']);
+			if ($response->view === NULL) {
+				if (isset(self::$responses[$response->status]['body'])) {
+					$response->view = fText::compose(
+						self::$responses[$response->status]['body']
+					);
 				} else {
-					$this->status = 'no_content';
-					$this->view   = NULL;
+					$response->status = 'no_content';
+					$response->view   = NULL;
 				}
 			}
 
@@ -378,28 +407,28 @@
 			// We want to let any renderers work their magic before deciding anything.
 			//
 
-			if ($this->view !== NULL && count($this->renderHooks)) {
-				foreach ($this->renderHooks as $renderCallback) {
+			if ($response->view !== NULL && count($response->renderHooks)) {
+				foreach ($response->renderHooks as $renderCallback) {
 					if (is_callable($renderCallback)) {
-						call_user_func($renderCallback, $this);
+						call_user_func($renderCallback, $response);
 					}
 				}
 			}
 
-			$this->view   = (string) $this->view;
-			$this->status = ucwords(fGrammar::humanize($this->status));
-			$this->code   = isset($aliases[$version][$this->code])
-				? $aliases[$version][$this->code]
-				: $this->code;
+			$view   = (string) $response->view;
+			$status = ucwords(fGrammar::humanize($response->status));
+			$code   = isset($aliases[$version][$response->code])
+				? $aliases[$version][$response->code]
+				: $response->code;
 
 			//
 			// If we don't have a type set we will try to determine the type by caching
 			// our view as a file and getting it's mimeType.
 			//
 
-			if (!$this->type) {
-				$this->type = self::cache(NULL, $this->view)->getMimeType();
-			}
+			$type = (!$response->type)
+				? self::cache(NULL, $response->view)->getMimeType()
+				: $response->type;
 
 			//
 			// Output all of our headers.
@@ -410,15 +439,15 @@
 			//
 
 			header(!iw::checkSAPI('cgi-fcgi')
-				? sprintf('%s %d %s', $_SERVER['SERVER_PROTOCOL'], $this->code, $this->status)
-				: sprintf('Status: %d %s', $this->code, $this->status)
+				? sprintf('%s %d %s', $_SERVER['SERVER_PROTOCOL'], $code, $status)
+				: sprintf('Status: %d %s', $code, $status)
 			);
 
-			if ($this->code != 204) {
-				header(sprintf('Content-Type: %s', $this->type));
+			if ($code != 204) {
+				header(sprintf('Content-Type: %s', $type));
 			}
 
-			foreach ($this->headers as $header => $value) {
+			foreach ($response->headers as $header => $value) {
 				header($header . ': ' . $value);
 			}
 
@@ -426,7 +455,7 @@
 			// Last, but not least, echo our view.
 			//
 
-			echo $this->view;
+			echo $view;
 			exit(1);
 		}
 	}

@@ -42,24 +42,6 @@
 		static private $baseURLs = array();
 
 		/**
-		 * The Content-Type to send on sendHeader()
-		 *
-		 * @static
-		 * @access private
-		 * @var string
-		 */
-		static private $contentType = NULL;
-
-		/**
-		 * An array of error handlers used with triggerError()
-		 *
-		 * @static
-		 * @access private
-		 * @var array
-		 */
-		static private $error_handlers = array();
-
-		/**
 		 * A list of default accept mime types
 		 *
 		 * @static
@@ -67,6 +49,15 @@
 		 * @var array
 		 */
 		static private $defaultAcceptTypes = array();
+
+		/**
+		 * Whether or not to ignore the accept types of the request
+		 *
+		 * @static
+		 * @access private
+		 * @var boolean
+		 */
+		static private $ignoreAcceptTypes = FALSE;
 
 		/**
 		 * Matches whether or not a given class name is a potential
@@ -245,6 +236,10 @@
 				$accept_types = self::$baseURLs[self::getBaseURL()]['accept_types'];
 			}
 
+			if (self::$ignoreAcceptTypes) {
+				return reset($accept_types);
+			}
+
 			//
 			// The below mapping is used solely to normalize the request format to retrieve
 			// the above listed format accept types.  This makes 'htm' equivalent to 'html'
@@ -306,12 +301,16 @@
 						}
 					}
 
-					return (self::$contentType = $best_type);
+					return $best_type;
 				}
-				self::triggerError('not_acceptable');
+
+				$error = 'not_found';
 			} else {
-				self::triggerError('not_found');
+				$error = 'not_acceptable';
 			}
+
+			self::$ignoreAcceptTypes = TRUE;
+			self::triggerError($error);
 		}
 
 		/**
@@ -348,20 +347,18 @@
 		 * @param array $methods An array of allowed request methods
 		 * @return boolean TRUE if the current request method is in the array, FALSE otherwise
 		 */
-		static protected function allowMethods(array $methods = array())
+		static protected function allowMethods($allowed_methods = array())
 		{
-			$request_method  = strtolower($_SERVER['REQUEST_METHOD']);
-			$allowed_methods = array_map('strtolower', $methods);
-
-			if ($request_method == 'post' && Request::check(Request::REQUEST_METHOD_PARAM)) {
-				$request_method = Request::get(Request::REQUEST_METHOD_PARAM, 'string', NULL);
+			if (!is_array($allowed_methods)) {
+				$allowed_methods = func_get_args();
 			}
 
-			if (!in_array($request_method, $allowed_methods)) {
-				self::triggerError('not_allowed', NULL, NULL, array(
+			$allowed_methods = array_map('strtolower', $allowed_methods);
+
+			if (!in_array(Request::getMethod(), $allowed_methods)) {
+				self::triggerError('not_allowed', array(
 					'Allow: ' . implode(', ', $allowed_methods)
 				));
-				return FALSE;
 			}
 
 			return TRUE;
