@@ -160,11 +160,11 @@
 		 */
 		static public function resolve($content = NULL)
 		{
-			if ($content === NULL && self::$response) {
-				$content = self::resolve(self::$response);
+			if (isset(self::$response)) {
+				$content = self::resolve(self::clear());
+			}
 
-			} elseif (!($content instanceof self)) {
-
+			if (!($content instanceof self)) {
 				//
 				// Previous versions of inKWell may have responded with objects such as View or
 				// fImage.  The short answer here is that if we receive content to resolve, we
@@ -173,8 +173,8 @@
 				// directly and use the content as we see fit.  The send() method will take care
 				// of how to output it.
 				//
-
 				$content = new self('ok', NULL, array(), $content);
+
 			}
 
 			return $content;
@@ -381,23 +381,19 @@
 				'1.1' => array( /* CURRENT VERSION OF HTTP SO WE SHOULD BE GOOD */ )
 			);
 
-			$response = isset(self::$response)
-				? self::$response
-				: $this;
-
 			//
 			// If after all rendering, we still don't have a view, we will try to get a
 			// default body based on our configured responses.
 			//
 
-			if ($response->view === NULL) {
-				if (isset(self::$responses[$response->status]['body'])) {
-					$response->view = fText::compose(
-						self::$responses[$response->status]['body']
+			if ($this->view === NULL) {
+				if (isset(self::$thiss[$this->status]['body'])) {
+					$this->view = fText::compose(
+						self::$thiss[$this->status]['body']
 					);
 				} else {
-					$response->status = 'no_content';
-					$response->view   = NULL;
+					$this->status = 'no_content';
+					$this->view   = NULL;
 				}
 			}
 
@@ -405,28 +401,28 @@
 			// We want to let any renderers work their magic before deciding anything.
 			//
 
-			if ($response->view !== NULL && count($response->renderHooks)) {
-				foreach ($response->renderHooks as $renderCallback) {
+			if ($this->view !== NULL && count($this->renderHooks)) {
+				foreach ($this->renderHooks as $renderCallback) {
 					if (is_callable($renderCallback)) {
-						call_user_func($renderCallback, $response);
+						call_user_func($renderCallback, $this);
 					}
 				}
 			}
 
-			$view   = (string) $response->view;
-			$status = ucwords(fGrammar::humanize($response->status));
-			$code   = isset($aliases[$version][$response->code])
-				? $aliases[$version][$response->code]
-				: $response->code;
+			$this->view   = (string) $this->view;
+			$this->status = ucwords(fGrammar::humanize($this->status));
+			$this->code   = isset($aliases[$version][$this->code])
+				? $aliases[$version][$this->code]
+				: $this->code;
 
 			//
 			// If we don't have a type set we will try to determine the type by caching
 			// our view as a file and getting it's mimeType.
 			//
 
-			$type = (!$response->type)
-				? self::cache(NULL, $response->view)->getMimeType()
-				: $response->type;
+			$this->type = (!$this->type)
+				? self::cache(NULL, $this->view)->getMimeType()
+				: $this->type;
 
 			//
 			// Output all of our headers.
@@ -437,15 +433,15 @@
 			//
 
 			header(!iw::checkSAPI('cgi-fcgi')
-				? sprintf('%s %d %s', $_SERVER['SERVER_PROTOCOL'], $code, $status)
-				: sprintf('Status: %d %s', $code, $status)
+				? sprintf('%s %d %s', $_SERVER['SERVER_PROTOCOL'], $this->code, $this->status)
+				: sprintf('Status: %d %s', $this->code, $this->status)
 			);
 
-			if ($code != 204) {
-				header(sprintf('Content-Type: %s', $type));
+			if ($this->code != 204) {
+				header(sprintf('Content-Type: %s', $this->type));
 			}
 
-			foreach ($response->headers as $header => $value) {
+			foreach ($this->headers as $header => $value) {
 				header($header . ': ' . $value);
 			}
 
@@ -453,7 +449,7 @@
 			// Last, but not least, echo our view.
 			//
 
-			echo $view;
+			echo $this->view;
 			exit(1);
 		}
 	}
