@@ -365,14 +365,15 @@
 			}
 
 			$allowed_methods = array_map('strtolower', $allowed_methods);
+			$current_method  = Request::getMethod();
 
-			if (!in_array(Request::getMethod(), $allowed_methods)) {
+			if (!in_array($current_method, $allowed_methods)) {
 				self::triggerError('not_allowed', array(
 					'Allow: ' . implode(', ', $allowed_methods)
 				));
 			}
 
-			return TRUE;
+			return $current_method;
 		}
 
 		/**
