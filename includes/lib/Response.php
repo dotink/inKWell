@@ -387,9 +387,9 @@
 			//
 
 			if ($this->view === NULL) {
-				if (isset(self::$thiss[$this->status]['body'])) {
+				if (isset(self::$responses[$this->status]['body'])) {
 					$this->view = fText::compose(
-						self::$thiss[$this->status]['body']
+						self::$responses[$this->status]['body']
 					);
 				} else {
 					$this->status = 'no_content';
