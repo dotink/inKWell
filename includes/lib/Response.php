@@ -312,14 +312,14 @@
 				? strtolower($type)
 				: NULL;
 
-			if (isset(self::$renderers['*'])) {
-				$this->renderHooks[] = self::$renderers['*'];
-			}
-
 			foreach (self::$renderers as $type_match => $callback) {
 				if ($type_match != '*' && preg_match('#' . $type_match . '#', $this->type)) {
 					$this->renderHooks[] = $callback;
 				}
+			}
+
+			if (isset(self::$renderers['*'])) {
+				$this->renderHooks[] = self::$renderers['*'];
 			}
 
 			if (func_num_args() > 3) {

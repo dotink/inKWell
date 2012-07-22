@@ -9,17 +9,20 @@
 		'default' => 'not_found',
 
 		//
-		// Renderers are custom callback logic which will have the view passed to them for
-		// matching response types during the the response construction.  The matching type
-		// is actually a RegEx delimited by #.  Each callback is rendered in the order in which
-		// it is defined with the exception of * which is always rendered first and matches all
-		// mime types.
+		// Renderers are custom callback logic which will have the response passed to them
+		// prior to outputting the view.  They are based on mime-type and will only be called
+		// if the response content type matches.
+		//
+		// The match, represented by the key of the array, is actually a RegEx delimited by #.
+		//
+		// Each callback is rendered in the order in which it is defined except for the '*'
+		// match which will always be rendered last, and will match any mime type.
 		//
 
 		'renderers' => array(
-			'*'                => 'Response::renderAny',
 			'application/json' => 'Response::renderJSON',
-			'application/php'  => 'Response::renderPHP'
+			'application/php'  => 'Response::renderPHP',
+			'*'                => 'Response::renderAny'
 		),
 
 		//
