@@ -51,6 +51,15 @@
 		static private $defaultAcceptTypes = array();
 
 		/**
+		 * The current error status
+		 *
+		 * @static
+		 * @access private
+		 * @var string
+		 */
+		static private $error = NULL;
+
+		/**
 		 * Whether or not to ignore the accept types of the request
 		 *
 		 * @static
@@ -236,16 +245,13 @@
 				$accept_types = self::$baseURLs[self::getBaseURL()]['accept_types'];
 			}
 
-			if (self::$ignoreAcceptTypes) {
-				return reset($accept_types);
-			}
-
 			//
 			// The below mapping is used solely to normalize the request format to retrieve
 			// the above listed format accept types.  This makes 'htm' equivalent to 'html'
 			// and 'jpeg' equivalent to 'jpg'.  It's a bit verbose for what it does but it
 			// is clear for extending for future supported types.
 			//
+
 			switch ($request_format = Request::getFormat()) {
 				case 'htm':
 				case 'html':
@@ -280,37 +286,42 @@
 					$request_format_types = Request::getFormatTypes('png');
 					break;
 				default:
-					$request_format_types = NULL;
+					$request_format_types = array();
 					break;
 			}
 
-			$best_accept_types = ($request_format_types)
-				? array_intersect($accept_types, $request_format_types)
-				: $accept_types;
+			if (self::$ignoreAcceptTypes) {
+				$best_type = (!($best_type = Request::getBestAcceptType($accept_types)))
+					? reset($accept_types)
+					: $best_type;
+			} else {
+				if ($request_format && count($request_format_types) && count($accept_types)) {
+					$accept_types = array_intersect($accept_types, $request_format_types);
 
-			if (count($best_accept_types)) {
-				$best_type = Request::getBestAcceptType($best_accept_types);
-
-				if ($best_type !== FALSE) {
-					if (!Request::getFormat()) {
-						foreach(Request::getFormatTypes() as $format => $types) {
-							if (in_array($best_type, $types)) {
-								Request::set(Request::REQUEST_FORMAT_PARAM, $format);
-								break;
-							}
-						}
+					if (!count($accept_types)) {
+						self::$ignoreAcceptTypes = TRUE;
+						self::triggerError('not_found');
 					}
-
-					return $best_type;
 				}
 
-				$error = 'not_found';
-			} else {
-				$error = 'not_acceptable';
+				$best_type = Request::getBestAcceptType($accept_types);
 			}
 
-			self::$ignoreAcceptTypes = TRUE;
-			self::triggerError($error);
+			if (!$best_type) {
+				self::$ignoreAcceptTypes = TRUE;
+				self::triggerError('not_acceptable');
+			}
+
+			if (!$request_format) {
+				foreach(Request::getFormatTypes() as $format => $types) {
+					if (in_array($best_type, $types)) {
+						Request::set(Request::REQUEST_FORMAT_PARAM, $format);
+						break;
+					}
+				}
+			}
+
+			return $best_type;
 		}
 
 		/**
@@ -332,9 +343,9 @@
 				$accept_languages = self::$baseURLs[self::getBaseURL()]['accept_languages'];
 			}
 
-			return ($best_language = Request::getBestAcceptType($accept_languages))
-				? $best_language
-				: self::triggerError('not_acceptable');
+			return !($best_language = Request::getBestAcceptType($accept_languages))
+				? self::triggerError('not_acceptable')
+				: $best_language;
 		}
 
 		/**
@@ -550,7 +561,12 @@
 		 */
 		static protected function triggerError($error, $headers = array(), $message = NULL)
 		{
-			$handler = NULL;
+			if (self::$error) {
+				return;
+			}
+
+			self::$error = $error;
+			$handler     = NULL;
 
 			//
 			// Try to get a handler for the default base URL
@@ -570,19 +586,16 @@
 
 			if (is_callable($handler)) {
 				Response::register(call_user_func($handler, $error, $headers, $message));
+
 			} else {
 
 				//
 				// If we are seeing a not acceptable error, we cannot rely on the
-				// self::acceptTypes().  At this point, whatever we give them is not going to be
-				// what they want, so they can deal with it.
+				// self::acceptTypes().  At this point, whatever we give them is not going to
+				// be what they want, so they can deal with it.
 				//
 
-				$mime_type = ($error != 'not_acceptable')
-					? self::acceptTypes()
-					: NULL;
-
-				Response::register(new Response($error, $mime_type, $headers, $message));
+				Response::register(new Response($error, self::acceptTypes(), $headers, $message));
 			}
 
 			self::yield();

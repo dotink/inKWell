@@ -143,9 +143,7 @@
 		 */
 		static public function register($response)
 		{
-			if (!self::$response) {
-				self::$response = $response;
-			}
+			self::$response = $response;
 		}
 
 		/**
