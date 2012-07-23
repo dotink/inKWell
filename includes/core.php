@@ -528,16 +528,16 @@
 		 */
 		static public function init($config = NULL)
 		{
-			self::$config          = array();
-			self::$roots['config'] = iw::getRoot(NULL, self::DEFAULT_CONFIG_ROOT);
+			self::$config = array();
 
-			$config_cache = preg_match(self::REGEX_ABSOLUTE_PATH, $config)
-				? $config
-				: implode(iw::DS, array(
-					self::getRoot('config'),
-					'.' . $config
-				));
+			if (preg_match(self::REGEX_ABSOLUTE_PATH, $config)) {
+				self::$roots['config'] = dirname($config);
+				$config                = basename($config);
+			} else {
+				self::$roots['config'] = self::DEFAULT_CONFIG_ROOT;
+			}
 
+			$config_cache = iw::getRoot('config') . iw::DS . '.' . $config;
 
 			if (is_file($config_cache) && is_readable($config_cache)) {
 				self::$config = @unserialize(file_get_contents($config_cache));
@@ -552,7 +552,7 @@
 			}
 
 			if (!self::$config) {
-				self::$config = self::buildConfig($config);
+				self::$config = self::buildConfig(iw::getRoot('config') . iw::DS . $config);
 			}
 
 			//
