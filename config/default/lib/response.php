@@ -62,7 +62,7 @@
 
 			'bad_request' => array(
 				'code' => 400,
-				'body' => 'The requested resource requires authorization'
+				'body' => 'The requested could not be understood'
 			),
 
 			'not_authorized' => array(
