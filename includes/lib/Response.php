@@ -6,56 +6,88 @@
 		const DEFAULT_RESPONSE        = 'not_found';
 
 		/**
+		 * Location of the cache directory
 		 *
+		 * @static
+		 * @access private
+		 * @var string
 		 */
 		static private $cacheDirectory = NULL;
 
 		/**
+		 * Registered response for multi-response resolution
 		 *
+		 * @static
+		 * @access private
+		 * @var string
 		 */
 		static private $response  = NULL;
 
 		/**
+		 * A list of available responses
 		 *
+		 * @static
+		 * @access private
+		 * @var array
 		 */
 		static private $responses = array();
 
 		/**
+		 * A list of available renderers
 		 *
+		 * @static
+		 * @access private
+		 * @var array
 		 */
 		static private $renderers = array();
 
 		/**
+		 * The view for the response
 		 *
+		 * @access protected
+		 * @var mixed
 		 */
 		protected $view = NULL;
 
 		/**
+		 * The status of the response, ex: 'ok'
 		 *
+		 * @access private
+		 * @var string
 		 */
 		private $status = NULL;
 
 		/**
+		 * The code of the response, ex: 200
 		 *
+		 * @access private
+		 * @var integer
 		 */
 		private $code = NULL;
 
 		/**
+		 * The content/mime type of the response, ex: 'text/html'
 		 *
+		 * @access private
+		 * @var string
 		 */
 		private $type = NULL;
 
 		/**
+		 * A list of headers to output if the response is sent
 		 *
+		 * @access private
+		 * @var array
 		 */
 		private $headers = array();
 
 		/**
+		 * The render hooks which will be applied to the view on sending
 		 *
+		 * @access private
+		 * @var array
 		 */
 		private $renderHooks = array();
-
-
 
 		/**
 		 * Initialize the class
@@ -382,8 +414,9 @@
 			);
 
 			//
-			// If after all rendering, we still don't have a view, we will try to get a
-			// default body based on our configured responses.
+			// If for some reason we have been provided a NULL view we should try to
+			// see if we have a default body for the response type.  If we don't, let's
+			// provide a legitimate no content response.
 			//
 
 			if ($this->view === NULL) {
@@ -398,7 +431,10 @@
 			}
 
 			//
-			// We want to let any renderers work their magic before deciding anything.
+			// We want to let any renderers work their magic before doing anything else.  A good
+			// renderer will do whatever it can to resolve the response to a string.  Otherwise
+			// whatever the response is will be casted as a string and may not do what one
+			// expects.
 			//
 
 			if ($this->view !== NULL && count($this->renderHooks)) {
