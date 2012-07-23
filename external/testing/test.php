@@ -41,7 +41,7 @@
 	// Define our application root as the directory containing the includes folder
 	//
 
-	define('APPLICATION_ROOT', dirname($include_directory));
+	define('APPLICATION_ROOT', realpath(dirname($include_directory)));
 
 	require(implode(DIRECTORY_SEPARATOR, array(
 		APPLICATION_ROOT,

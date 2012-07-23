@@ -15,7 +15,8 @@
 
 			$this->testConfigDir = implode(iw::DS, array(
 				TEST_ROOT,
-				'config'
+				'config',
+				'default'
 			));
 		}
 
@@ -225,6 +226,36 @@
 			);
 		}
 
+		public function iwCheckSAPI()
+		{
+			iw::init();
+
+			\Enhance\Assert::areIdentical(
+				TRUE,
+				iw::checkSAPI('cli')
+			);
+		}
+
+		public function iwCheckSAPICaseInsensitive()
+		{
+			iw::init();
+
+			\Enhance\Assert::areIdentical(
+				TRUE,
+				iw::checkSAPI('CLI')
+			);
+		}
+
+		public function iwGetActiveDomain()
+		{
+			iw::init($this->testConfigDir);
+
+			\Enhance\Assert::areIdentical(
+				'localhost',
+				iw::getActiveDomain()
+			);
+		}
+
 		public function iwClassizeByConvention()
 		{
 			iw::init();
@@ -312,6 +343,116 @@
 					'q' => 'inkwell framework'
 				), 'bottom')
 			);
+		}
+
+		public function iwGetDatabase()
+		{
+			iw::init($this->testConfigDir);
+
+			\Enhance\Assert::areIdentical(
+				APPLICATION_ROOT . '/external/testing/databases/simple',
+				iw::getDatabase('default')->getDatabase()
+			);
+		}
+
+		public function iwGetDatabaseRead()
+		{
+			iw::init($this->testConfigDir);
+
+			\Enhance\Assert::areIdentical(
+				APPLICATION_ROOT . '/external/testing/databases/simple',
+				iw::getDatabase('default', 'read')->getDatabase()
+			);
+		}
+
+		public function iwGetDatabaseWrite()
+		{
+			iw::init($this->testConfigDir);
+
+			\Enhance\Assert::areIdentical(
+				APPLICATION_ROOT . '/external/testing/databases/simple',
+				iw::getDatabase('default', 'write')->getDatabase()
+			);
+		}
+
+		public function iwGetExecutionMode()
+		{
+			iw::init();
+
+			\Enhance\Assert::areIdentical(
+				'development',
+				iw::getExecutionMode()
+			);
+		}
+
+		public function iwGetExecutionModeOverloaded()
+		{
+			iw::init($this->testConfigDir);
+
+			\Enhance\Assert::areIdentical(
+				'testing',
+				iw::getConfig('inkwell', 'execution_mode')
+			);
+
+			\Enhance\Assert::areIdentical(
+				'development',
+				iw::getExecutionMode()
+			);
+		}
+
+		public function iwGetRootConfig()
+		{
+			iw::init();
+
+			\Enhance\Assert::areIdentical(
+				APPLICATION_ROOT . '/config',
+				iw::getRoot('config')
+			);
+		}
+
+		public function iwGetRootConfigWithAbsoluteConfigPath()
+		{
+			iw::init($this->testConfigDir);
+
+			\Enhance\Assert::areIdentical(
+				APPLICATION_ROOT . '/external/testing/config',
+				iw::getRoot('config')
+			);
+		}
+
+		public function iwWriteConfig()
+		{
+			iw::init($this->testConfigDir);
+
+			iw::writeConfig(iw::buildConfig());
+
+			\Enhance\Assert::areIdentical(
+				TRUE,
+				is_file(APPLICATION_ROOT . '/external/testing/config/.default')
+			);
+
+			unlink(APPLICATION_ROOT . '/external/testing/config/.default');
+		}
+
+		public function iwReadCachedConfig()
+		{
+			iw::init($this->testConfigDir);
+			iw::writeConfig(iw::buildConfig());
+
+			//
+			// temporarily disable output buffering to make sure there's no output
+			//
+
+			ob_end_clean();
+
+			\Enhance\Assert::areIdentical(
+				TRUE,
+				is_array(iw::init($this->testConfigDir))
+			);
+
+			ob_start();
+
+			unlink(APPLICATION_ROOT . '/external/testing/config/.default');
 		}
 
 		/**

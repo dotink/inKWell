@@ -5,7 +5,7 @@
 	 * your live configuration.  inKWell's configuration system is completely modular.
 	 * As such, the information you're looking for is probably somewhere neatly
 	 * organized in '/config/default' or something similar.
-
+	 *
 	 * We suggest running a live config for all development, and only once a site
 	 * is ready to go live writing the config.  The configuration can be written
 	 * from console using iw::writeConfig() -- until that time your system will

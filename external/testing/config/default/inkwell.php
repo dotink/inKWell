@@ -7,13 +7,13 @@
 		// apache/nginx redirects.  If it's null, then no redirection will
 		// occur.
 
-		'active_domain' => NULL,
+		'active_domain' => 'localhost',
 
 		// The execution mode determines various aspects of operation.  Valid execution modes
 		// are currently 'development' and 'production'.  Other settings, when set to NULL
 		// will have varying defaults based on the execution mode.
 
-		'execution_mode' => 'development',
+		'execution_mode' => 'testing',
 
 		// This is the writable directory where caches, file uploads, images,
 		// etc. can be stored.  iw::getWriteDirectory() will supply this, or a
