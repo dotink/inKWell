@@ -92,7 +92,7 @@
 
 			'internal_error' => array(
 				'code' => 500,
-				'body' => 'The requested resource is unavailable due to an internal error'
+				'body' => 'The requested resource is not available due to an internal error'
 			),
 
 			'service_unavailable' => array(

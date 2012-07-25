@@ -5,7 +5,7 @@
 		// By default database support is disabled.  You should not set this to FALSE unless you
 		// configure at least one database below.
 
-		'disabled'  => TRUE,
+		'disabled'  => FALSE,
 
 		'databases' => array(
 
@@ -28,8 +28,8 @@
 				//
 				// Both the type and name are required and should be a string value.
 
-				'type' => NULL,
-				'name' => NULL,
+				'type' => 'sqlite',
+				'name' => APPLICATION_ROOT . '/user/databases/forums',
 
 				// Authentication information if required
 
