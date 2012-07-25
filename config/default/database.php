@@ -5,7 +5,7 @@
 		// By default database support is disabled.  You should not set this to FALSE unless you
 		// configure at least one database below.
 
-		'disabled'  => FALSE,
+		'disabled'  => TRUE,
 
 		'databases' => array(
 
