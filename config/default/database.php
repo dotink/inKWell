@@ -28,8 +28,8 @@
 				//
 				// Both the type and name are required and should be a string value.
 
-				'type' => 'sqlite',
-				'name' => APPLICATION_ROOT . '/user/databases/forums',
+				'type' => NULL,
+				'name' => NULL,
 
 				// Authentication information if required
 
