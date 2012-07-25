@@ -90,6 +90,11 @@
 				'body' => 'The requested resource is not available in the accepted parameters'
 			),
 
+			'internal_error' => array(
+				'code' => 500,
+				'body' => 'The requested resource is not available due to an internal error'
+			),
+
 			'service_unavailable' => array(
 				'code' => 503,
 				'body' => 'The requested resource is temporarily unavailable'
