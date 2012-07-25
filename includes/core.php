@@ -269,11 +269,11 @@
 		 */
 		static public function classize($element)
 		{
-			if (isset(self::$classTranslations[$element])) {
-				return self::$classTranslations[$element];
-			} else {
-				return fGrammar::camelize($element, TRUE);
+			if (!isset(self::$classTranslations[$element])) {
+				self::$classTranslations[$element] = fGrammar::camelize($element, TRUE);
 			}
+
+			return self::$classTranslations[$element];
 		}
 
 		/**
@@ -299,7 +299,11 @@
 		 */
 		static public function elementize($class)
 		{
-			return array_search($class, self::$classTranslations);
+			if (!($element = array_search($class, self::$classTranslations))) {
+				self::classize($element = fGrammar::underscorize($class));
+			}
+
+			return $element;
 		}
 
 		/**
@@ -506,10 +510,8 @@
 				$write_directory = self::$writeDirectory;
 			}
 
-			if (!is_dir($write_directory) && class_exists('fDirectory', FALSE)) {
-				try {
-					fDirectory::create($write_directory);
-				} catch (fValidationException $e) {}
+			if (!is_dir($write_directory)) {
+				fDirectory::create($write_directory);
 			}
 
 			return rtrim($write_directory, '/\\' . iw::DS);

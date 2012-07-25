@@ -177,10 +177,7 @@
 			);
 
 			if (self::$minificationMode) {
-				$this->enableMinification(
-					self::$minificationMode,
-					self::$cacheDirectory
-				);
+				$this->enableMinification(self::$minificationMode, self::$cacheDirectory);
 			}
 		}
 
