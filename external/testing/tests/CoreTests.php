@@ -160,7 +160,7 @@
 						),
 					),
 				),
-				iw::getConfig('database')
+				iw::getConfig('databases')
 			);
 		}
 
@@ -186,7 +186,7 @@
 						),
 					),
 				),
-				iw::getConfig('database')
+				iw::getConfig('databases')
 			);
 		}
 
@@ -202,7 +202,7 @@
 					'password' => NULL,
 					'hosts' => array('127.0.0.1'),
 				),
-				iw::getConfig('database', 'databases', 'default::both')
+				iw::getConfig('databases', 'databases', 'default::both')
 			);
 		}
 
@@ -221,7 +221,7 @@
 			iw::init();
 
 			\Enhance\Assert::areIdentical(
-				array('autoloaders', 'database', 'inkwell', 'routes'),
+				array('autoloaders', 'databases', 'inkwell', 'routes'),
 				array_keys(iw::getConfigsByType('core'))
 			);
 		}

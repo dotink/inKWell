@@ -720,13 +720,17 @@
 			//
 
 			if (
-				isset(self::$config['database']['disabled'])
-				&& !self::$config['database']['disabled']
-				&& isset(self::$config['database']['databases'])
-				&& is_array(self::$config['database']['databases'])
+				isset(self::$config['databases']['disabled'])
+				&& !self::$config['databases']['disabled']
+				&& isset(self::$config['databases']['databases'])
+				&& is_array(self::$config['databases']['databases'])
 			) {
 
-				$databases = self::$config['database']['databases'];
+				$databases = self::$config['databases']['databases'];
+
+				foreach (iw::getConfigsByType('Databases') as $db_config) {
+					$databases = array_merge($databases, $db_config);
+				}
 
 				foreach ($databases as $name => $settings) {
 
