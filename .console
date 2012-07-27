@@ -129,7 +129,7 @@
 
 	register_shutdown_function('___respawn');
 
-	$___dbconf    = iw::getConfig('database');
+	$___dbconf    = iw::getConfig('databases');
 	$___database  = ___use_db('default');
 	$___stdin     = fopen('php://stdin', 'r');
 	$___stat      = fstat($___stdin);

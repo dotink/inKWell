@@ -126,6 +126,10 @@
 				'not_acceptable' => array(
 					'code' => 406,
 					'body' => 'The requested resource is not available in the accepted format'
+				),
+				'internal_error' => array(
+					'code' => 500,
+					'body' => 'The requested resource is not available due to an internal error'
 				)
 			);
 
@@ -197,6 +201,7 @@
 			}
 
 			if (!($content instanceof self)) {
+
 				//
 				// Previous versions of inKWell may have responded with objects such as View or
 				// fImage.  The short answer here is that if we receive content to resolve, we
@@ -205,6 +210,7 @@
 				// directly and use the content as we see fit.  The send() method will take care
 				// of how to output it.
 				//
+
 				$content = new self('ok', NULL, array(), $content);
 
 			}
