@@ -413,8 +413,7 @@
 	function ___check($source)
 	{
 		$source        = '<?php ' . trim($source);
-		$tmp_dir       = iw::getWriteDirectory('.tmp');
-		$file          = $tmp_dir . '.console_command';
+		$file          = APPLICATION_ROOT . '/.console.command';
 		$current_class = NULL;
 
 		file_put_contents($file, $source);
