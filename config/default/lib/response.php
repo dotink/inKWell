@@ -15,14 +15,10 @@
 		//
 		// The match, represented by the key of the array, is actually a RegEx delimited by #.
 		//
-		// Each callback is rendered in the order in which it is defined except for the '*'
-		// match which will always be rendered last, and will match any mime type.
+		// Each callback is rendered in the order in which it is defined.
 		//
 
 		'renderers' => array(
-			'application/json' => 'Response::renderJSON',
-			'application/php'  => 'Response::renderPHP',
-			'*'                => 'Response::renderAny'
 		),
 
 		//
