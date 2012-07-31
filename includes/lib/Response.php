@@ -61,7 +61,7 @@
 		 * @access private
 		 * @var array
 		 */
-		static private $render_methods = array();
+		static private $renderMethods = array();
 
 		/**
 		 * The view for the response
@@ -221,7 +221,7 @@
 		 */
 		static public function registerRenderMethod($class, $method)
 		{
-			self::$render_methods[strtolower($class)] = $method;
+			self::$renderMethods[strtolower($class)] = $method;
 		}
 
 		/**
@@ -274,8 +274,8 @@
 				$view_class = get_class($response->view);
 				$render_key = strtolower($view_class);
 
-				if (isset(self::$render_methods[$render_key])) {
-					$method         = self::$render_methods[$render_key];
+				if (isset(self::$renderMethods[$render_key])) {
+					$method         = self::$renderMethods[$render_key];
 					$response->view = $response->view->$method();
 				} elseif (is_callable(array($response->view, '__toString'))) {
 					$response->view = (string) $response->view;
