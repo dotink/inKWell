@@ -17,9 +17,6 @@
 		//
 
 		'renderers' => array(
-			'*'                => 'Response::renderAny',
-			'application/json' => 'Response::renderJSON',
-			'application/php'  => 'Response::renderPHP'
 		),
 
 		//
@@ -91,5 +88,13 @@
 				'code' => 503,
 				'body' => 'The requested resource is temporarily unavailable'
 			)
+		),
+
+		//
+		// Load supported response types from includes/lib/responses
+		//
+
+		'autoloaders' => array(
+			'Response*' => 'includes/lib/responses'
 		)
 	));

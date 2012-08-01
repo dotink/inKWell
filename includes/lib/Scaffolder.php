@@ -102,9 +102,8 @@
 
 				if (is_callable($test) && is_callable($make)) {
 					if (call_user_func($test, $class)) {
-						if (call_user_func($make, $class)) {
-							return iw::initializeClass($class);
-						}
+						call_user_func($make, $class);
+						return iw::initializeClass($class);
 					}
 				}
 			}
