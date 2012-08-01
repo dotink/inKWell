@@ -6,5 +6,7 @@
 	// general route specificity.
 
 	return iw::createConfig('Core', array(
-
+		'/' => function() {
+			return new Response('ok', NULL, View::create('hello_world.php'));
+		}
 	));
