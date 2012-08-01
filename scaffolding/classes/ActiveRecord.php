@@ -9,6 +9,15 @@
 
 	{
 		/**
+		 * Cached information about the class built during __init()
+		 *
+		 * @static
+		 * @access private
+		 * @var array
+		 */
+		static private $info = array();
+
+		/**
 		 * Initializes all static class information for the <%= $class %> model
 		 *
 		 * @static
@@ -19,79 +28,178 @@
 		 */
 		static public function __init(array $config = array(), $element = NULL)
 		{
-			parent::__init($config, $element);
+			$parent = get_parent_class(__CLASS__);
+			$schema = fORMSchema::retrieve(__CLASS__);
+			$table  = parent::classToRecordTable(__CLASS__);
+			$ukeys  = $schema->getKeys($table, 'unique');
+
+			//
+			// Set Configuration Defaults
+			//
+
+			self::$info = array(
+				'columns'        => array(),
+				'pkey_columns'   => array(),
+				'pkey_methods'   => array(),
+				'fkey_columns'   => array(),
+				'serial_columns' => array(),
+				'fixed_columns'  => array(),
+				'ordering'       => array(),
+				'id_column'      => NULL,
+				'slug_column'    => NULL,
+			);
+
+			//
+			// Set an explicit ID column or attempt to find a natural one
+			//
+
+			if (isset($config['id_column']) && !empty($config['id_column'])) {
+				self::$info['id_column'] = $config['id_column'];
+			} else {
+				if (sizeof($ukeys) == 1 && sizeof($ukeys[0]) == 1) {
+					self::$info['id_column'] = $ukeys[0][0];
+				}
+			}
+
+			//
+			// If we have a slug column make sure it's unique across all records
+			//
+
+			if (isset($config['slug_column']) && !empty($config['slug_column'])) {
+				$valid_column = FALSE;
+				$slug_column  = $config['slug_column'];
+
+				foreach ($ukeys as $ukey) {
+					if (count($ukey) == 1 && $ukey[0] == $slug_column) {
+						$valid_column = TRUE;
+					}
+				}
+
+				if ($valid_column) {
+					fORM::registerHookCallback(
+						__CLASS__,
+						'pre::validate()',
+						iw::makeTarget($parent, 'resolveSlugColumn')
+					);
+				}
+
+				self::$info['slug_column'] = $slug_column;
+			}
+
+			//
+			// Set any explicitly configured ordering
+			//
+
+			if (isset($config['ordering']) && is_array($config['ordering'])) {
+				self::$info['ordering'] = $config['ordering'];
+			}
+
+			//
+			// Enabled fixed columns (columns which cannot be populated)
+			//
+
+			if (isset($config['fixed_columns']) && is_array($config['fixed_columns'])) {
+				self::$info['fixed_columns'] = $config['fixed_columns'];
+			}
+
+			//
+			// Set all non-configurable / schema-provided information
+			//
+
+			foreach ($schema->getColumnInfo($table) as $column => $info) {
+
+				$fixed_dates = array(
+					'date'      => 'CURRENT_DATE',
+					'time'      => 'CURRENT_TIME',
+					'timestamp' => 'CURRENT_TIMESTAMP'
+				);
+
+				fORM::registerInspectCallback(
+					__CLASS__,
+					$column,
+					iw::makeTarget($parent, 'inspectColumn')
+				);
+
+				if ($info['auto_increment']) {
+					self::$info['serial_columns'][] = $column;
+					self::$info['fixed_columns']    = array_merge(
+						self::$info['fixed_columns'],
+						array($column)
+					);
+				} elseif (in_array($info['type'], array_keys($fixed_dates))) {
+					if ($info['default'] == $fixed_dates[$info['type']]) {
+						self::$info['fixed_columns'] = array_merge(
+							self::$info['fixed_columns'],
+							array($column)
+						);
+					}
+				}
+
+				self::$info['columns'][] = $column;
+			}
+
+			foreach ($schema->getKeys($table, 'primary') as $column) {
+				self::$info['pkey_columns'][] = $column;
+				self::$info['pkey_methods'][] = 'get' . fGrammar::camelize($column, TRUE);
+			}
+
+			foreach ($schema->getKeys($table, 'foreign') as $fkey_info) {
+				self::$info['fkey_columns'][] = $fkey_info['column'];
+			}
+
+			return TRUE;
 		}
 
 		/**
-		 * Gets the record name for the <%= $class %> class
+		 * Determines if an Active Record class has been defined by ensuring the class exists
+		 * and it is a subclass of this class.  This is, in part, a workaround for a PHP bug
+		 * #46753 where is_subclass_of() will not properly autoload certain classes in edge cases.
+		 * This behavior is fixed in 5.3+, but the method will probably remain as a nice shorthand.
 		 *
 		 * @static
 		 * @access public
-		 * @param void
-		 * @return string The custom or default record translation
+		 * @param string $record_class The Active Record class
+		 * @return boolean Whether or not the class is defined
 		 */
-		static public function getRecordName()
+		static public function classExists($record_class)
 		{
-			return parent::getRecordName(__CLASS__);
+			return (class_exists($record_class) && is_subclass_of($record_class, __CLASS__));
 		}
 
 		/**
-		 * Gets the record table name for the <%= $class %> class
+		 * Fetches all or specific information about the record type
 		 *
 		 * @static
-		 * @access public
-		 * @param void
-		 * @return string The custom or default record table translation
+		 * @access protected
+		 * @param string $key The key of the information to fetch, NULL (default) fetches all keys
+		 * @return mixed The information
 		 */
-		static public function getRecordTable()
+		static protected function fetchInfo($key = NULL)
 		{
-			return parent::getRecordTable(__CLASS__);
+			if (!$key) {
+				return self::$info;
+			}
+
+			return array_key_exists($key, self::$info)
+				? self::$info[$key]
+				: NULL;
 		}
 
 		/**
-		 * Gets the record set name for the <%= $class %> class
+		 * Creates a new <%= $class %> from provided slug.
 		 *
 		 * @static
 		 * @access public
-		 * @param void
-		 * @return string The custom or default record set translation
-		 */
-		static public function getRecordSet()
-		{
-			return parent::getRecordSet(__CLASS__);
-		}
-
-		/**
-		 * Gets the order for the <%= $class %> class
-		 *
-		 * @static
-		 * @access public
-		 * @param void
-		 * @return array The default sort array
-		 */
-		static public function getOrder()
-		{
-			return parent::getOrder(__CLASS__);
-		}
-
-		/**
-		 * Creates a new <%= $class %> from a slug and identifier.  The
-		 * identifier is optional, but if is provided acts as an additional
-		 * check against the validity of the record.
-		 *
-		 * @static
-		 * @access public
-		 * @param $slug A primary key string representation or "slug" string
-		 * @param $identifier The identifier as provided as an extension to the slug
+		 * @param string $slug A slug or URL-friendly primary key representation of the record
 		 * @return fActiveRecord The active record matching the slug
 		 */
-		static public function createFromSlug($slug, $identifier = NULL)
+		static public function createFromSlug($slug)
 		{
-			return parent::createFromSlug(__CLASS__, $slug, $identifier);
+			return parent::createFromSlug(__CLASS__, $slug);
 		}
 
 		/**
-		 * Creates a new <%= $class %> from a provided resource key.
+		 * Creates a new <%= $class %> from the provided resource key.
 		 *
 		 * @static
 		 * @access public
@@ -102,5 +210,22 @@
 		static public function createFromResourceKey($resource_key)
 		{
 			return parent::createFromResourceKey(__CLASS__, $resource_key);
+		}
+
+		/**
+		 * Represents the object as a string using the value of a configured or natural id_column.
+		 * If no such column exists, it uses the human version of the record class.
+		 *
+		 * @access public
+		 * @return string The string representation of the object
+		 */
+		public function __toString()
+		{
+			if ($id_column = self::fetchInfo('id_column')) {
+				$method = 'get' . fGrammar::camelize($id_column, TRUE);
+				return $this->$method();
+			}
+
+			return fGrammar::humanize(__CLASS__);
 		}
 	}
