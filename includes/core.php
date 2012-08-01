@@ -546,14 +546,13 @@
 			}
 
 			if (iw::checkSAPI('cli-server') && isset($_GET['__test'])) {
-				$config = APPLICATION_ROOT . iw::DS . implode(iw::DS, array(
+				self::$config = self::buildConfig(implode(iw::DS, array(
+					APPLICATION_ROOT,
 					'external',
 					'testing',
 					'config'
-				));
-			}
-
-			if (!self::$config) {
+				)));
+			} elseif (!self::$config) {
 				self::$config = self::buildConfig(iw::getRoot('config') . iw::DS . $config);
 			}
 
