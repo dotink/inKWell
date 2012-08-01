@@ -1,0 +1,6 @@
+for branch in `git branch | grep -v \*`
+do
+	git checkout $branch;
+	git merge master;
+	git checkout master;
+done
