@@ -3,14 +3,6 @@
 	return iw::createConfig('Library', array(
 
 		//
-		// Load supported response types from includes/lib/responses
-		//
-
-		'autoloaders' => array(
-			'Response*' => 'includes/lib/responses'
-		),
-
-		//
 		// The default response
 		//
 
@@ -103,5 +95,13 @@
 				'code' => 503,
 				'body' => 'The requested resource is temporarily unavailable'
 			)
+		),
+
+		//
+		// Load supported response types from includes/lib/responses
+		//
+
+		'autoloaders' => array(
+			'Response*' => 'includes/lib/responses'
 		)
 	));
