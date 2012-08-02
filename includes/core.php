@@ -74,6 +74,15 @@
 		static private $autoLoaders = array();
 
 		/**
+		 * Registered autoloader standards
+		 *
+		 * @static
+		 * @access private
+		 * @var array
+		 */
+		static private $autoLoaderStandards = array();
+
+		/**
 		 * Index of classes which have been initialized
 		 *
 		 * @static
@@ -574,6 +583,12 @@
 			// Configure our autoloaders
 			//
 
+			self::$autoLoaderStandards = array(
+				'compat'  => iw::makeTarget(__CLASS__, 'transformClassToCompatible'),
+				'psr0'    => iw::makeTarget(__CLASS__, 'transformClassToPSR0'),
+				'iw'      => iw::makeTarget(__CLASS__, 'transformClassToIW')
+			);
+
 			if (isset(self::$config['autoloaders'])) {
 				if(is_array(self::$config['autoloaders'])) {
 					self::$autoLoaders = self::$config['autoloaders'];
@@ -989,6 +1004,16 @@
 
 				} elseif ($match) {
 
+					$target = explode(':', $target, 2);
+
+					if (count($target) == 1) {
+						$standard = __CLASS__;
+						$target   = $target[0];
+					} else {
+						$standard = $target[0];
+						$target   = $target[1];
+					}
+
 					//
 					// But maybe we do...
 					//
@@ -998,13 +1023,15 @@
 						//
 						// Trim leading or trailing directory separators from target
 						//
+
 						trim($target, '/\\' . iw::DS),
 
 						//
 						// Replace any backslashes in the class with directory separator
 						// to support Namespaces and trim the leading root namespace if present.
 						//
-						ltrim(str_replace('\\', iw::DS, $class), '\\') . '.php'
+
+						self::transformClass($standard, $class)
 					));
 
 					if (file_exists($file)) {
@@ -1105,6 +1132,84 @@
 			}
 
 			return $result;
+		}
+
+		/**
+		 * Transforms a class name to a given (registered) standard
+		 *
+		 * @static
+		 * @access private
+		 * @param string $standard The standard to use (case insensitive)
+		 * @param string $class The class to transform
+		 * @return string The transformed class to file according to the standard
+		 */
+		static private function transformClass($standard, $class) {
+			$standard = strtolower($standard);
+
+			if (isset(self::$autoLoaderStandards[$standard])) {
+				$callback = self::$autoLoaderStandards[$standard];
+
+				if (is_callable($callback)) {
+					return call_user_func(self::$autoLoaderStandards[$standard], $class);
+				}
+			}
+
+			throw new Exception(sprintf(
+				'Cannot load class using "%s", standard not registered or invalid',
+				$standard
+			));
+		}
+
+		/**
+		 * Transforms a class to comaptibility standard (ignores namespace)
+		 *
+		 * @static
+		 * @access private
+		 * @param string $class The class to transform
+		 * @return string The transformed class
+		 */
+		static private function transformClassToCompatible($class)
+		{
+			$class = ltrim($class, '\\');
+			$parts = explode('\\', $class);
+			$class = array_pop($parts);
+
+			return $class . '.php';
+		}
+
+		/**
+		 * Trasnforms a class to IW (inkwell) standard
+		 *
+		 * @static
+		 * @access private
+		 * @param string $class the class to transform
+		 * @return string The transformed class
+		 */
+		static private function transformClassToIW($class)
+		{
+			$class = ltrim($class, '\\');
+			$parts = explode('\\', $class);
+			$class = array_pop($parts);
+			$path  = implode(iw::DS, array_map('fGrammar::humanize', $parts));
+
+			return $path . iw::DS . $class . '.php';
+		}
+
+		/**
+		 * Transforms a class to PSR-0 standard
+		 *
+		 * @static
+		 * @access private
+		 * @param string $class The class to transform
+		 * @return string The transformed class
+		 */
+		static private function transformClassToPSR0($class)
+		{
+			$class = ltrim($class, '\\');
+			$class = str_replace('\\', iw::DS, $class);
+			$class = str_replace('_',  iw::DS, $class);
+
+			return $class . '.php';
 		}
 
 		/**
