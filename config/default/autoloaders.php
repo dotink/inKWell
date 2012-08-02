@@ -47,14 +47,14 @@
 		// class matching.  In short, this means that attempts to load classes
 		// which do not match the provided prefixes will skip these directories.
 
-		'f*'           => 'COMPAT:includes/lib/flourish',
-		'Moor*'        => 'COMPAT:includes/lib/moor',
+		'f*'           => 'COMPAT: includes/lib/flourish',
+		'Moor*'        => 'COMPAT: includes/lib/moor',
 
 		// A non-wilcard string which does not represent a class means that an
 		// attempt will be made to load any class from these directories.
 
-		'library'      => 'IW:includes/lib',
-		'vendor'       => 'PSR0:includes/lib/vendor'
+		'library'      => 'IW: includes/lib',
+		'vendor'       => 'PSR0: includes/lib/vendor'
 
 		// Additional class matches will be triggered by class configurations
 		// whose 'auto_load' key is set to true and for which a 'root_directory'
