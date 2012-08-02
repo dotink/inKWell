@@ -86,7 +86,7 @@
 				'body' => 'The requested resource is not available in the accepted parameters'
 			),
 
-			'internal_error' => array(
+			'internal_server_error' => array(
 				'code' => 500,
 				'body' => 'The requested resource is not available due to an internal error'
 			),
