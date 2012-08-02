@@ -1008,10 +1008,10 @@
 
 					if (count($target) == 1) {
 						$standard = __CLASS__;
-						$target   = $target[0];
+						$target   = trim($target[0]);
 					} else {
-						$standard = $target[0];
-						$target   = $target[1];
+						$standard = trim($target[0]);
+						$target   = trim($target[1]);
 					}
 
 					//
