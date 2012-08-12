@@ -1,8 +1,21 @@
 <?php
 
+	/**
+	 * The inKWell Response
+	 *
+	 * The Response class is designed to allow for concise and clean representation of an entire
+	 * HTTP response.  It handles the isolation of various response codes and a 'pluggable'
+	 * renderer for varying response mime types.
+	 *
+	 * @author Matthew J. Sahagian [mjs] <gent@dotink.org>
+	 * @copyright Copyright (c) 2012, Matthew J. Sahagian
+	 * @license Please reference the LICENSE.txt file at the root of this distribution
+	 *
+	 * @package inKWell
+	 */
 	class Response implements inkwell
 	{
-		const DEFAULT_CACHE_DIRECTORY = '.response_cache';
+		const DEFAULT_CACHE_DIRECTORY = 'cache/.responses';
 		const DEFAULT_RESPONSE        = 'not_found';
 
 		/**
@@ -40,6 +53,15 @@
 		 * @var array
 		 */
 		static private $renderers = array();
+
+		/**
+		 * A list of available render methods
+		 *
+		 * @static
+		 * @access private
+		 * @var array
+		 */
+		static private $renderMethods = array();
 
 		/**
 		 * The view for the response
@@ -127,7 +149,7 @@
 					'code' => 406,
 					'body' => 'The requested resource is not available in the accepted format'
 				),
-				'internal_error' => array(
+				'internal_server_error' => array(
 					'code' => 500,
 					'body' => 'The requested resource is not available due to an internal error'
 				)
@@ -183,6 +205,26 @@
 		}
 
 		/**
+		 * Registers a render method for a particular class
+		 *
+		 * This allows for classes to modularly set a render method to be used during response
+		 * resolution of a view.  In short, if the view ends up as an instance of the provided
+		 * class, it will call the given method to render it.  This is an exact match so
+		 * a class which might inherit from a class with an existing registered method needs to
+		 * register its own again.
+		 *
+		 * @static
+		 * @access public
+		 * @param string $class The class to register a render method for.
+		 * @param string $method The method to call on the object to render it
+		 * @return void
+		 */
+		static public function registerRenderMethod($class, $method)
+		{
+			self::$renderMethods[strtolower($class)] = $method;
+		}
+
+		/**
 		 * Resolves a response one way or another.
 		 *
 		 * This will basically turn whatever you pass it into a response object.  The assumption
@@ -219,6 +261,31 @@
 		}
 
 		/**
+		 * Rendering callback for object typed views.
+		 *
+		 * @static
+		 * @access protected
+		 * @param Response $response The response to render
+		 * @return void
+		 */
+		static protected function renderObject($response)
+		{
+			if (is_object($response->view)) {
+				$view_class = get_class($response->view);
+				$render_key = strtolower($view_class);
+
+				if (isset(self::$renderMethods[$render_key])) {
+					$method         = self::$renderMethods[$render_key];
+					$response->view = $response->view->$method();
+				} elseif (is_callable(array($response->view, '__toString'))) {
+					$response->view = (string) $response->view;
+				} else {
+					$response->view = $view_class;
+				}
+			}
+		}
+
+		/**
 		 * This will send a cache file for the current unique URL based on a mime type.
 		 *
 		 * The response will only be sent if the cached response is less than the $max_age
@@ -236,64 +303,6 @@
 		static public function sendCache($type, $max_age = 120, $entropy = NULL, $max_entropy = 0)
 		{
 			return;
-		}
-
-		/**
-		 * Our default and global rendering callback.
-		 *
-		 * @static
-		 * @access protected
-		 * @param Response $response The response to render
-		 * @return void
-		 */
-		static protected function renderAny($response)
-		{
-			if (is_object($response->view)) {
-				switch (strtolower(get_class($response->view))) {
-					case 'view':
-						$response->view = $response->view->make();
-						break;
-					case 'fimage':
-					case 'ffile':
-						$response->view = $response->view->read();
-						break;
-					default:
-						$response->view = is_callable(array($response->view, '__toString'))
-							? (string) $response->view
-							: get_class($this->view);
-						break;
-				}
-			}
-		}
-
-		/**
-		 * Renders a view (proper or not) to JSON
-		 *
-		 * @static
-		 * @access protected
-		 * @param Response $response The response to render
-		 * @return void
-		 */
-		static protected function renderJSON($response)
-		{
-			if (is_string($response->view) && fJSON::decode($response->view) !== NULL) {
-				return;
-			}
-
-			$response->view = fJSON::encode($response->view);
-		}
-
-		/**
-		 * Renders a view (proper or not) to PHP
-		 *
-		 * @static
-		 * @access protected
-		 * @param Response $response The response to render
-		 * @return void
-		 */
-		static protected function renderPHP($response)
-		{
-			$this->view = serialize($response->view);
 		}
 
 		/**
@@ -372,14 +381,22 @@
 				: NULL;
 
 			foreach (self::$renderers as $type_match => $callback) {
-				if ($type_match != '*' && preg_match('#' . $type_match . '#', $this->type)) {
+				if (preg_match('#' . $type_match . '#', $this->type)) {
 					$this->renderHooks[] = $callback;
 				}
 			}
 
-			if (isset(self::$renderers['*'])) {
-				$this->renderHooks[] = self::$renderers['*'];
-			}
+			//
+			// Add our render object callback at the end in case our view turns out to be
+			// an object not handled by previous renderers.
+			//
+
+			$this->renderHooks[] = iw::makeTarget('Response', 'renderObject');
+
+			//
+			// Set our headers and view.  This will vary depending on how many parameters they
+			// provided.
+			//
 
 			if (func_num_args() > 3) {
 				$this->headers = func_get_arg(2);

@@ -31,7 +31,7 @@
 ## inKWell Environment Options                                                ##
 ################################################################################
 
-SetEnv IW_CONFIG default;
+SetEnv IW_CONFIG default
 
 ################################################################################
 ## Enable Rewrite                                                             ##
@@ -41,7 +41,7 @@ SetEnv IW_CONFIG default;
 		RewriteEngine On
 		RewriteBase   /
 
-		SetEnv IW_REWRITE_ENABLED 1;
+		SetEnv IW_REWRITE_ENABLED 1
 
 		RewriteCond	%{DOCUMENT_ROOT}/%{REQUEST_URI} !-f
 		RewriteRule	^.*$ %{DOCUMENT_ROOT}/index.php [NS,QSA]

@@ -15,14 +15,10 @@
 		//
 		// The match, represented by the key of the array, is actually a RegEx delimited by #.
 		//
-		// Each callback is rendered in the order in which it is defined except for the '*'
-		// match which will always be rendered last, and will match any mime type.
+		// Each callback is rendered in the order in which it is defined.
 		//
 
 		'renderers' => array(
-			'application/json' => 'Response::renderJSON',
-			'application/php'  => 'Response::renderPHP',
-			'*'                => 'Response::renderAny'
 		),
 
 		//
@@ -90,7 +86,7 @@
 				'body' => 'The requested resource is not available in the accepted parameters'
 			),
 
-			'internal_error' => array(
+			'internal_server_error' => array(
 				'code' => 500,
 				'body' => 'The requested resource is not available due to an internal error'
 			),
@@ -99,5 +95,13 @@
 				'code' => 503,
 				'body' => 'The requested resource is temporarily unavailable'
 			)
+		),
+
+		//
+		// Load supported response types from includes/lib/responses
+		//
+
+		'autoloaders' => array(
+			'Response*' => 'includes/lib/responses'
 		)
 	));

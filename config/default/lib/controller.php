@@ -18,7 +18,7 @@
 		// The default accept types in preferred order.
 
 		'default_accept_types' => array(
-			'text/html',
-			'application/json'
+			'text/plain',
+			'text/html'
 		)
 	));

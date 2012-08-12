@@ -222,10 +222,10 @@
 						}
 					} else {
 						$___db_select = explode(' ', $___db_select);
-						$___db_name   = $___db_select[0]
+						$___db_name   = isset($___db_select[0])
 							? $___db_select[0]
 							: 'default';
-						$___db_role   = $___db_select[1]
+						$___db_role   = isset($___db_select[1])
 							? $___db_select[1]
 							: 'either';
 					}

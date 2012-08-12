@@ -91,11 +91,7 @@
 				}
 			}
 
-			//
-			// Attaching a NULL view as the default prevents exceptions in the event of
-			// no views being attached later.
-			//
-			self::attach(NULL);
+			Response::registerRenderMethod(__CLASS__, 'make');
 		}
 
 		/**

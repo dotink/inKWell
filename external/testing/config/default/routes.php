@@ -6,5 +6,4 @@
 	// general route specificity.
 
 	return iw::createConfig('Core', array(
-
 	));

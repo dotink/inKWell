@@ -19,7 +19,7 @@
 		 */
 		static public function __init(array $config = array(), $element = NULL)
 		{
-			parent::__init($config, $element);
+			return TRUE;
 		}
 
 		/**
@@ -35,14 +35,20 @@
 		 * @param integer $page The page of records to return if limited
 		 * @return <%= $class %> The resulting Record Set
 		 */
-		static public function build(array $wheres = array(), array $ordering = array(), $limit = NULL, $page = NULL)
+		static public function build($wheres = NULL, $ordering = NULL, $limit = NULL, $page = NULL)
 		{
+			$wheres   = is_array($wheres)   ? $wheres   : array();
+			$ordering = is_array($ordering) ? $ordering : array();
+
 			return parent::build(
 				'<%= ActiveRecord::classFromRecordSet($class) %>',
 				$wheres,
 				count($ordering)
 					? $ordering
-					: <%= ActiveRecord::classFromRecordSet($class) %>::getOrder(),
+					: ActiveRecord::fetchClassInfo(
+						'<%= ActiveRecord::classFromRecordSet($class) %>',
+						'ordering'
+					),
 				$limit,
 				$page
 			);
