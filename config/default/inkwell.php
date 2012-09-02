@@ -72,6 +72,6 @@
 		// directories.  By default this is /includes/lib/interfaces
 
 		'interfaces' => array(
-			'includes/lib/interfaces'
+			'library/interfaces'
 		)
 	));
