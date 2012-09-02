@@ -102,6 +102,6 @@
 		//
 
 		'autoloaders' => array(
-			'Response*' => 'includes/lib/responses'
+			'Response*' => 'user/responses'
 		)
 	));

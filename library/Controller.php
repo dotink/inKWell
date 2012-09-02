@@ -157,7 +157,6 @@
 					self::redirect($ssl_domain . $request, NULL, 301);
 				}
 
-
 				//
 				// Configure default accept types
 				//
@@ -178,7 +177,7 @@
 				}
 			}
 
-
+			return TRUE;
 		}
 
 		/**
@@ -294,6 +293,7 @@
 				$best_type = (!($best_type = Request::getBestAcceptType($accept_types)))
 					? reset($accept_types)
 					: $best_type;
+
 			} else {
 				if ($request_format && count($request_format_types) && count($accept_types)) {
 					$accept_types = array_intersect($accept_types, $request_format_types);
