@@ -204,7 +204,7 @@
 		 * A routable not found view.
 		 *
 		 * This will simply trigger the standard not found error, however, it catches the
-		 * exception thrown by yield.
+		 * exception thrown by halt.
 		 *
 		 * @static
 		 * @access public
@@ -599,7 +599,7 @@
 				Response::register(new Response($error, self::acceptTypes(), $headers, $message));
 			}
 
-			self::yield();
+			self::halt();
 		}
 
 		/**
@@ -607,7 +607,7 @@
 		 *
 		 * This method triggers a MoorContinueException.
 		 */
-		static protected function yield($message = NULL)
+		static protected function halt($message = NULL)
 		{
 			throw new MoorContinueException($message);
 		}
