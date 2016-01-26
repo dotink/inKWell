@@ -609,7 +609,8 @@
 			try {
 				$result = $db->query($sql);
 				foreach($result as $record) {
-					fCore::expose($record);
+					ksort($record);
+					print_r($record);
 				}
 			} catch (Exception $e) {
 				echo 'Exception: ' . $e->getMessage();
